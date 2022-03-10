@@ -5286,6 +5286,19 @@ int amdgpu_do_asic_reset(struct list_head *device_list_handle,
 				vram_lost = amdgpu_device_check_vram_lost(tmp_adev);
 
 				amdgpu_coredump(tmp_adev, vram_lost, reset_context);
+				if (reset_context->job && reset_context->job->vm) {
+					tmp_adev->reset_event_info.pid =
+						reset_context->job->vm->task_info.pid;
+					memset(tmp_adev->reset_event_info.pname, 0, TASK_COMM_LEN);
+					strcpy(tmp_adev->reset_event_info.pname,
+						reset_context->job->vm->task_info.process_name);
+				} else {
+					tmp_adev->reset_event_info.pid = 0;
+					memset(tmp_adev->reset_event_info.pname, 0, TASK_COMM_LEN);
+				}
+
+				tmp_adev->reset_event_info.flags = vram_lost;
+				schedule_work(&tmp_adev->gpu_reset_event_work);
 
 				if (vram_lost) {
 					DRM_INFO("VRAM is lost due to GPU reset!\n");
