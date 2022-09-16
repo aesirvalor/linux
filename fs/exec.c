@@ -1894,6 +1894,16 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (IS_ERR(filename))
 		return PTR_ERR(filename);
 
+	/* Fast-path ENOENT for $PATH search failures, before we alloc an mm or
+	 * parse arguments. */
+	if (fd == AT_FDCWD && flags == 0 && filename->name[0] == '/') {
+		struct path path;
+		retval = filename_lookup(AT_FDCWD, filename, 0, &path, NULL);
+		if (retval == -ENOENT)
+			goto out_ret;
+		path_put(&path);
+	}
+
 	/*
 	 * We move the actual failure in case of RLIMIT_NPROC excess from
 	 * set*uid() to execve() because too many poorly written programs
