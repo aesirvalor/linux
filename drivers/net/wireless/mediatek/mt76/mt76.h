@@ -811,11 +811,6 @@ struct mt76_dev {
 
 	u32 debugfs_reg;
 
-	struct led_classdev led_cdev;
-	char led_name[32];
-	bool led_al;
-	u8 led_pin;
-
 	u8 csa_complete;
 
 	u32 rxfilter;
@@ -834,6 +829,13 @@ struct mt76_dev {
 		struct mt76_usb usb;
 		struct mt76_sdio sdio;
 	};
+
+	struct {
+		struct led_classdev cdev;
+		char name[32];
+		bool al;
+		u8 pin;
+	} leds;
 };
 
 struct mt76_power_limits {
