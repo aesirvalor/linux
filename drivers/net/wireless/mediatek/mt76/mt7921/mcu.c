@@ -1156,7 +1156,8 @@ int __mt7921_mcu_set_clc(struct mt7921_dev *dev, u8 *alpha2,
 		__le16 len;
 		u8 idx;
 		u8 env;
-		u8 pad1[2];
+		u8 acpi_conf;
+		u8 pad1;
 		u8 alpha2[2];
 		u8 type[2];
 		u8 rsvd[64];
@@ -1164,6 +1165,7 @@ int __mt7921_mcu_set_clc(struct mt7921_dev *dev, u8 *alpha2,
 		.ver = 1,
 		.idx = idx,
 		.env = env_cap,
+		.acpi_conf = mt7921_acpi_get_flags(&dev->phy),
 	};
 	int ret, valid_cnt = 0;
 	u16 buf_len = 0;
