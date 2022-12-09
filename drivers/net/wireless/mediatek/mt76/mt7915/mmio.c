@@ -653,7 +653,7 @@ static u32 mt7915_mmio_wed_init_rx_buf(struct mtk_wed_device *wed, int size)
 		if (token < 0) {
 			dma_unmap_single(dev->mt76.dma_dev, phy_addr,
 					 wed->wlan.rx_size, DMA_TO_DEVICE);
-			skb_free_frag(ptr);
+			__free_pages(page, get_order(length));
 			goto unmap;
 		}
 
