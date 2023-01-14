@@ -3481,6 +3481,12 @@ static void mtk_pending_work(struct work_struct *work)
 	rtnl_lock();
 
 	dev_dbg(eth->dev, "[%s][%d] reset\n", __func__, __LINE__);
+	mtk_prepare_for_reset(eth);
+	mtk_wed_fe_reset();
+	/* Run again reset preliminary configuration in order to avoid any
+	 * possible race during FE reset since it can run releasing RTNL lock.
+	 */
+	mtk_prepare_for_reset(eth);
 
 	while (test_and_set_bit_lock(MTK_RESETTING, &eth->state))
 		cpu_relax();
@@ -3520,6 +3526,8 @@ static void mtk_pending_work(struct work_struct *work)
 	dev_dbg(eth->dev, "[%s][%d] reset done\n", __func__, __LINE__);
 
 	clear_bit_unlock(MTK_RESETTING, &eth->state);
+
+	mtk_wed_fe_reset_complete();
 
 	rtnl_unlock();
 }
