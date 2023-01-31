@@ -106,4 +106,5 @@ static const char * const amd_pstate_mode_string[] = {
 	[AMD_PSTATE_ACTIVE]      = "active",
 	NULL,
 };
+
 #endif /* _LINUX_AMD_PSTATE_H */
