@@ -140,8 +140,6 @@ static int __exit davinci_cpufreq_remove(struct platform_device *pdev)
 	if (cpufreq.asyncclk)
 		clk_put(cpufreq.asyncclk);
 
-	cpufreq_unregister_driver(&davinci_driver);
-
 	return 0;
 }
 
