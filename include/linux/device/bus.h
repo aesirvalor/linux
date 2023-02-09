@@ -286,7 +286,8 @@ extern int bus_unregister_notifier(struct bus_type *bus,
 						      from the device */
 #define BUS_NOTIFY_DRIVER_NOT_BOUND	0x00000008 /* driver fails to be bound */
 
-extern struct kset *bus_get_kset(struct bus_type *bus);
+extern struct kset *bus_get_kset(const struct bus_type *bus);
 extern struct klist *bus_get_device_klist(struct bus_type *bus);
+struct device *bus_get_dev_root(const struct bus_type *bus);
 
 #endif

@@ -1166,6 +1166,76 @@ int subsys_virtual_register(struct bus_type *subsys,
 }
 EXPORT_SYMBOL_GPL(subsys_virtual_register);
 
+/**
+ * driver_find - locate driver on a bus by its name.
+ * @name: name of the driver.
+ * @bus: bus to scan for the driver.
+ *
+ * Call kset_find_obj() to iterate over list of drivers on
+ * a bus to find driver by name. Return driver if found.
+ *
+ * This routine provides no locking to prevent the driver it returns
+ * from being unregistered or unloaded while the caller is using it.
+ * The caller is responsible for preventing this.
+ */
+struct device_driver *driver_find(const char *name, struct bus_type *bus)
+{
+	struct subsys_private *sp = bus_to_subsys(bus);
+	struct kobject *k;
+	struct driver_private *priv;
+
+	if (!sp)
+		return NULL;
+
+	k = kset_find_obj(sp->drivers_kset, name);
+	subsys_put(sp);
+	if (!k)
+		return NULL;
+
+	priv = to_driver(k);
+
+	/* Drop reference added by kset_find_obj() */
+	kobject_put(k);
+	return priv->driver;
+}
+EXPORT_SYMBOL_GPL(driver_find);
+
+/*
+ * Warning, the value could go to "removed" instantly after calling this function, so be very
+ * careful when calling it...
+ */
+bool bus_is_registered(const struct bus_type *bus)
+{
+	struct subsys_private *sp = bus_to_subsys(bus);
+	bool is_initialized = false;
+
+	if (sp) {
+		is_initialized = true;
+		subsys_put(sp);
+	}
+	return is_initialized;
+}
+
+/**
+ * bus_get_dev_root - return a pointer to the "device root" of a bus
+ * @bus: bus to return the device root of.
+ *
+ * If a bus has a "device root" structure, return it, WITH THE REFERENCE
+ * COUNT INCREMENTED.
+ *
+ * Note, when finished with the device, a call to put_device() is required.
+ *
+ * If the device root is not present (or bus is not a valid pointer), NULL
+ * will be returned.
+ */
+struct device *bus_get_dev_root(const struct bus_type *bus)
+{
+	if (bus)
+		return get_device(bus->dev_root);
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(bus_get_dev_root);
+
 int __init buses_init(void)
 {
 	bus_kset = kset_create_and_add("bus", &bus_uevent_ops, NULL);
