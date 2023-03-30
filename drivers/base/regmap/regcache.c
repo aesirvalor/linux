@@ -20,6 +20,7 @@ static const struct regcache_ops *cache_types[] = {
 #if IS_ENABLED(CONFIG_REGCACHE_COMPRESSED)
 	&regcache_lzo_ops,
 #endif
+	&regcache_maple_ops,
 	&regcache_flat_ops,
 };
 
