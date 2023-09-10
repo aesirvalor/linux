@@ -2480,7 +2480,7 @@ static int bmi323_write_event_config(struct iio_dev *indio_dev,
 }
 
 static const struct iio_info bmi323_accel_info = {
-	.attrs			= &bmi323_accel_attrs_group,
+	//.attrs			= &bmi323_accel_attrs_group, // this gets accessed in iio_device_register_sysfs
 	.read_raw		= bmi323_read_raw,
 	//.write_raw		= bmi323_write_raw,
 	//.read_event_value	= bmi323_read_event,
