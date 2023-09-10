@@ -150,6 +150,7 @@ enum bmi323_axis {
 	BMI323_GYRO_AXIS_X,
 	BMI323_GYRO_AXIS_Y,
 	BMI323_GYRO_AXIS_Z,
+	BMI323_TEMP,
 	BMI323_AXIS_MAX,
 };
 
@@ -2123,20 +2124,20 @@ int bmi323_chip_rst(struct bmi323_private_data *bmi323) {
 EXPORT_SYMBOL_NS_GPL(bmi323_chip_rst, IIO_BMC150);
 
 static const struct iio_chan_spec bmi323_channels[] = {
-	{
-		.type = IIO_TEMP,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) /*|
-				      BIT(IIO_CHAN_INFO_SCALE) |
-				      BIT(IIO_CHAN_INFO_OFFSET)*/,
-		.scan_index = -1,
-	},
 	BMI323_ACCEL_CHANNEL(X, 16),
 	BMI323_ACCEL_CHANNEL(Y, 16),
 	BMI323_ACCEL_CHANNEL(Z, 16),
 	BMI323_GYRO_CHANNEL(X, 16),
 	BMI323_GYRO_CHANNEL(Y, 16),
 	BMI323_GYRO_CHANNEL(Z, 16),
-	IIO_CHAN_SOFT_TIMESTAMP(6),
+	{
+		.type = IIO_TEMP,
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) /*|
+				      BIT(IIO_CHAN_INFO_SCALE) |
+				      BIT(IIO_CHAN_INFO_OFFSET)*/,
+		.scan_index = BMI323_TEMP,
+	},
+	IIO_CHAN_SOFT_TIMESTAMP(BMI323_AXIS_MAX),
 };
 
 /*
@@ -2531,6 +2532,8 @@ static irqreturn_t iio_bmi323_trigger_h(int irq, void *p)
 	u16 *data;
 	struct bmc150_accel_data *indio_data = iio_priv(indio_dev);
 
+	printk(KERN_CRIT "bmc150 iio_bmi323_trigger_h\n");
+
 	/*data = kmalloc(indio_dev->scan_bytes, GFP_KERNEL);
 	if (!data)
 		goto bmi323_irq_done;*/
@@ -2611,6 +2614,7 @@ BMI323_GYRO_AXIS_Z,
 static const unsigned long bmi323_accel_scan_masks[] = {
 					BIT(BMI323_ACCEL_AXIS_X) | BIT(BMI323_ACCEL_AXIS_Y) | BIT(BMI323_ACCEL_AXIS_Z),
 					BIT(BMI323_GYRO_AXIS_X) | BIT(BMI323_GYRO_AXIS_Y) | BIT(BMI323_GYRO_AXIS_Z),
+					BIT(BMI323_TEMP),
 					0};
 
 int bmi323_iio_init(struct iio_dev *indio_dev) {
