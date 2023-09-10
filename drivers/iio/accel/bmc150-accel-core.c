@@ -1188,9 +1188,9 @@ static const struct iio_event_spec bmc150_accel_event = {
 
 #define BMI323_ACCEL_CHANNEL(_axis, bits) {				\
 	.type = IIO_ACCEL,						\
-	/*.modified = 1,*/							\
-	/*.channel2 = IIO_MOD_##_axis,*/					\
-	/*.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),*/		\
+	.modified = 1,							\
+	.channel2 = IIO_MOD_##_axis,					\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
 	/*.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |*/		\
 	/*			BIT(IIO_CHAN_INFO_SAMP_FREQ),*/		\
 	.scan_index = BMI323_ACCEL_AXIS_##_axis,					\
@@ -1208,9 +1208,9 @@ static const struct iio_event_spec bmc150_accel_event = {
 
 #define BMI323_GYRO_CHANNEL(_axis, bits) {				\
 	.type = IIO_ANGL_VEL,						\
-	/*.modified = 1,	*/						\
-	/*.channel2 = IIO_MOD_##_axis,*/					\
-	/*.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),*/			\
+	.modified = 1,							\
+	.channel2 = IIO_MOD_##_axis,					\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
 	/*.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |*/		\
 				/*BIT(IIO_CHAN_INFO_SAMP_FREQ),*/		\
 	.scan_index = BMI323_GYRO_AXIS_##_axis,					\
