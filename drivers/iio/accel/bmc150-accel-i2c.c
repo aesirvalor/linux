@@ -173,16 +173,70 @@ static void bmc150_acpi_dual_accel_remove(struct i2c_client *client) {}
 
 static int bmc150_accel_probe(struct i2c_client *client)
 {
+	int ret;
+	u8 chip_id_first[4];
+	enum bmc150_device_type dev_type = BMC150;
 	const struct i2c_device_id *id = i2c_client_get_device_id(client);
 	struct regmap *regmap;
 	const char *name = NULL;
 	enum bmc150_type type = BOSCH_UNKNOWN;
-	bool block_supported =
+	bool block_supported = false;
+
+	ret = i2c_smbus_read_i2c_block_data(client, 0x00, 4, &chip_id_first[0]);
+	if (ret != 4) {
+		dev_err(&client->dev, "error in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x", (int)ret, 0x00);
+		goto bmi150_old_probe;
+	}
+
+	if (chip_id_first[2] != 0x43) {
+		dev_err(&client->dev, "chip is not a bmi323.");
+	} else {
+		dev_err(&client->dev, "chip is a bmi323!");
+		dev_type = BMI323;
+	}
+
+	if (dev_type == BMI323) {
+		/*dev_warn*/ dev_err(&client->dev, "bmc323: the bmc150 is for sure a bmc323...\n");
+
+		struct iio_dev *indio_dev = devm_iio_device_alloc(&client->dev, sizeof(struct bmc150_accel_data));
+		if (!indio_dev) {
+			dev_err(&client->dev, "bmc323: out of memory\n");
+
+			return -ENOMEM;
+		}
+
+		dev_set_drvdata(&client->dev, indio_dev);
+		struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+		struct bmi323_private_data* bmi323_data = &data->bmi323;
+		bmi323_data->i2c_client = client;
+		bmi323_data->spi_client = NULL;
+		bmi323_data->irq = client->irq;
+
+		ret = bmi323_chip_rst(bmi323_data);
+		if (ret != 0) {
+			dev_err(&client->dev, "bmc323: error issuing the chip reset: %d\n", ret);
+			return ret;
+		}
+
+		/*dev_info*/ dev_err(&client->dev, "bmc323: chip rst success\n");
+
+		ret = bmi323_iio_init(indio_dev);
+		if (ret != 0) {
+			return ret;
+		}
+
+		return 0;
+	}
+	
+bmi150_old_probe:
+	dev_err(&client->dev, "executing the normal procedure for a bmc150...");
+
+	block_supported =
 		i2c_check_functionality(client->adapter, I2C_FUNC_I2C) ||
 		i2c_check_functionality(client->adapter,
 					I2C_FUNC_SMBUS_READ_I2C_BLOCK);
-	int ret;
-
+	
 	regmap = devm_regmap_init_i2c(client, &bmc150_regmap_conf);
 	if (IS_ERR(regmap)) {
 		dev_err(&client->dev, "Failed to initialize i2c regmap\n");
@@ -196,9 +250,10 @@ static int bmc150_accel_probe(struct i2c_client *client)
 
 	ret = bmc150_accel_core_probe(&client->dev, regmap, client->irq,
 				      type, name, block_supported);
-	if (ret)
+	if (ret) {
 		return ret;
-
+	}
+		
 	/*
 	 * The !id check avoids recursion when probe() gets called
 	 * for the second client.
@@ -211,6 +266,24 @@ static int bmc150_accel_probe(struct i2c_client *client)
 
 static void bmc150_accel_remove(struct i2c_client *client)
 {
+	struct iio_dev *indio_dev = dev_get_drvdata(&client->dev);
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	if (data->dev_type == BMI323) {
+		/*dev_info*/ dev_err(&client->dev, "bmc323 removing driver...\n");
+
+		iio_device_unregister(indio_dev);
+
+		/*dev_info*/ dev_err(&client->dev, "bmc323 deallocating driver storage...\n");
+
+		iio_device_free(indio_dev);
+
+		/*dev_info*/ dev_err(&client->dev, "bmc323 removal done.\n");
+
+		// TODO: create and call functions for bmi323
+		return;
+	}
+
 	bmc150_acpi_dual_accel_remove(client);
 
 	bmc150_accel_core_remove(&client->dev);

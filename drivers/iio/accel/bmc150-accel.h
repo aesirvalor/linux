@@ -8,6 +8,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
 
+#include <linux/i2c.h>
+#include <linux/spi/spi.h>
+
 struct regmap;
 struct i2c_client;
 struct bmc150_accel_chip_info;
@@ -34,6 +37,11 @@ struct bmc150_accel_interrupt {
 	atomic_t users;
 };
 
+enum bmc150_device_type {
+	BMC150,
+	BMI323,
+};
+
 struct bmc150_accel_trigger {
 	struct bmc150_accel_data *data;
 	struct iio_trigger *indio_trig;
@@ -53,6 +61,17 @@ enum bmc150_accel_trigger_id {
 	BMC150_ACCEL_TRIGGER_DATA_READY,
 	BMC150_ACCEL_TRIGGER_ANY_MOTION,
 	BMC150_ACCEL_TRIGGERS,
+};
+
+#define BMI323_FLAGS_RESET_FAILED 0x00000001U
+
+struct bmi323_private_data {
+	struct i2c_client* i2c_client;
+	struct spi_device* spi_client;
+	struct device* dev; // pointer at i2c_client->dev or spi_client->dev
+	struct mutex mutex;
+	int irq;
+	uint32_t flags;
 };
 
 struct bmc150_accel_data {
@@ -83,7 +102,29 @@ struct bmc150_accel_data {
 	void (*resume_callback)(struct device *dev);
 	struct delayed_work resume_work;
 	struct iio_mount_matrix orientation;
-};
+	enum bmc150_device_type dev_type;
+	struct bmi323_private_data bmi323;
+	};
+
+#define BCM150_BMI323_SOFT_RESET_REG 0x7E
+#define BCM150_BMI323_SOFT_RESET_VAL 0xDEAF
+
+
+
+int bmc323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value);
+int bmc323_read_s16(struct bmi323_private_data *bmi323, u8 in_reg, s16* out_value);
+int bmc323_read_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16* out_value);
+int bmi323_chip_check(struct bmi323_private_data *bmi323);
+int bmi323_chip_rst(struct bmi323_private_data *bmi323);
+
+/**
+ * This function  MUST be called in probe and is responsible for registering the userspace sysfs.
+ *
+ * The indio_dev MUST have been allocated but not registered. This function will perform userspace registration.
+ *
+ * @param indio_dev the industrual io device already allocated but not yet registered
+ */
+int bmi323_iio_init(struct iio_dev *indio_dev);
 
 int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
 			    enum bmc150_type type, const char *name,

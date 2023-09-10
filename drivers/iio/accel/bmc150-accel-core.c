@@ -28,6 +28,9 @@
 #define BMC150_ACCEL_DRV_NAME			"bmc150_accel"
 #define BMC150_ACCEL_IRQ_NAME			"bmc150_accel_event"
 
+#define BMI323_IRQ_NAME					"bmi323_event"
+
+
 #define BMC150_ACCEL_REG_CHIP_ID		0x00
 
 #define BMC150_ACCEL_REG_INT_STATUS_2		0x0B
@@ -49,6 +52,16 @@
 #define BMC150_ACCEL_DEF_RANGE_4G		0x05
 #define BMC150_ACCEL_DEF_RANGE_8G		0x08
 #define BMC150_ACCEL_DEF_RANGE_16G		0x0C
+
+#define BMI323_ACCEL_DEF_RANGE_2G		0x03
+#define BMI323_ACCEL_DEF_RANGE_4G		0x05
+#define BMI323_ACCEL_DEF_RANGE_8G		0x20 // TODO: do the rest, this is only one true
+#define BMI323_ACCEL_DEF_RANGE_16G		0x0C
+
+#define BMI323_GYRO_DEF_RANGE_2G		0x03
+#define BMI323_GYRO_DEF_RANGE_4G		0x05
+#define BMI323_GYRO_DEF_RANGE_2KDPS		0x40 // TODO: do the rest, this is only one true
+#define BMI323_GYRO_DEF_RANGE_16G		0x0C
 
 /* Default BW: 125Hz */
 #define BMC150_ACCEL_REG_PMU_BW		0x10
@@ -130,6 +143,16 @@
 #define BMC150_ACCEL_REG_FIFO_DATA		0x3F
 #define BMC150_ACCEL_FIFO_LENGTH		32
 
+enum bmi323_axis {
+	BMI323_ACCEL_AXIS_X = 0,
+	BMI323_ACCEL_AXIS_Y,
+	BMI323_ACCEL_AXIS_Z,
+	BMI323_GYRO_AXIS_X,
+	BMI323_GYRO_AXIS_Y,
+	BMI323_GYRO_AXIS_Z,
+	BMI323_AXIS_MAX,
+};
+
 enum bmc150_accel_axis {
 	AXIS_X,
 	AXIS_Y,
@@ -149,6 +172,11 @@ struct bmc150_scale_info {
 	u8 reg_range;
 };
 
+struct bmi323_scale_info {
+	int scale;
+	u8 reg_range;
+};
+
 struct bmc150_accel_chip_info {
 	const char *name;
 	u8 chip_id;
@@ -162,6 +190,19 @@ static const struct {
 	int val2;
 	u8 bw_bits;
 } bmc150_accel_samp_freq_table[] = { {15, 620000, 0x08},
+				     {31, 260000, 0x09},
+				     {62, 500000, 0x0A},
+				     {125, 0, 0x0B},
+				     {250, 0, 0x0C},
+				     {500, 0, 0x0D},
+				     {1000, 0, 0x0E},
+				     {2000, 0, 0x0F} };
+
+static const struct {
+	int val;
+	int val2; // IIO_VAL_INT_PLUS_MICRO
+	u8 bw_bits;
+} bmi323_samp_freq_table[] = { {15, 620000, 0x08},
 				     {31, 260000, 0x09},
 				     {62, 500000, 0x0A},
 				     {125, 0, 0x0B},
@@ -350,9 +391,18 @@ static int bmc150_accel_set_power_state(struct bmc150_accel_data *data, bool on)
 
 	return 0;
 }
+
+static int bmi323_set_power_state(struct bmc150_accel_data *data, bool on) {
+	return 0;
+}
+
 #else
 static int bmc150_accel_set_power_state(struct bmc150_accel_data *data, bool on)
 {
+	return 0;
+}
+
+static int bmi323_set_power_state(struct bmc150_accel_data *data, bool on) {
 	return 0;
 }
 #endif
@@ -912,6 +962,20 @@ static ssize_t bmc150_accel_get_fifo_state(struct device *dev,
 }
 
 static const struct iio_mount_matrix *
+bmi323_accel_get_mount_matrix(const struct iio_dev *indio_dev,
+				const struct iio_chan_spec *chan)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	return &data->orientation;
+}
+
+static const struct iio_chan_spec_ext_info bmi323_accel_ext_info[] = {
+	//IIO_MOUNT_MATRIX(IIO_SHARED_BY_DIR, bmc150_accel_get_mount_matrix),
+	{ }
+};
+
+static const struct iio_mount_matrix *
 bmc150_accel_get_mount_matrix(const struct iio_dev *indio_dev,
 				const struct iio_chan_spec *chan)
 {
@@ -1085,6 +1149,14 @@ static const struct attribute_group bmc150_accel_attrs_group = {
 	.attrs = bmc150_accel_attributes,
 };
 
+static const struct iio_event_spec bmi323_accel_event = {
+		.type = IIO_EV_TYPE_ROC,
+		.dir = IIO_EV_DIR_EITHER,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE) |
+				 BIT(IIO_EV_INFO_ENABLE) |
+				 BIT(IIO_EV_INFO_PERIOD)
+};
+
 static const struct iio_event_spec bmc150_accel_event = {
 		.type = IIO_EV_TYPE_ROC,
 		.dir = IIO_EV_DIR_EITHER,
@@ -1111,6 +1183,46 @@ static const struct iio_event_spec bmc150_accel_event = {
 	.ext_info = bmc150_accel_ext_info,				\
 	.event_spec = &bmc150_accel_event,				\
 	.num_event_specs = 1						\
+}
+
+#define BMI323_ACCEL_CHANNEL(_axis, bits) {				\
+	.type = IIO_ACCEL,						\
+	.modified = 1,							\
+	.channel2 = IIO_MOD_##_axis,					\
+	/*.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),*/		\
+	/*.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |*/		\
+	/*			BIT(IIO_CHAN_INFO_SAMP_FREQ),*/		\
+	.scan_index = BMI323_ACCEL_AXIS_##_axis,					\
+	.scan_type = {							\
+		.sign = 's',						\
+		.realbits = (bits),					\
+		.storagebits = 16,					\
+		.shift = 16 - (bits),					\
+		.endianness = IIO_LE,					\
+	},								\
+	/*.ext_info = bmi323_accel_ext_info,*/				\
+	/*.event_spec = &bmi323_accel_event,*/				\
+	/*.num_event_specs = 1*/						\
+}
+
+#define BMI323_GYRO_CHANNEL(_axis, bits) {				\
+	.type = IIO_ANGL_VEL,						\
+	.modified = 1,							\
+	.channel2 = IIO_MOD_##_axis,					\
+	/*.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),*/			\
+	/*.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |*/		\
+				/*BIT(IIO_CHAN_INFO_SAMP_FREQ),*/		\
+	.scan_index = BMI323_GYRO_AXIS_##_axis,					\
+	.scan_type = {							\
+		.sign = 's',						\
+		.realbits = (bits),					\
+		.storagebits = 16,					\
+		.shift = 16 - (bits),					\
+		.endianness = IIO_LE,					\
+	},								\
+	/*.ext_info = bmi323_accel_ext_info,*/				\
+	/*.event_spec = &bmi323_accel_event,*/				\
+	/*.num_event_specs = 1*/						\
 }
 
 #define BMC150_ACCEL_CHANNELS(bits) {					\
@@ -1244,6 +1356,32 @@ err_read:
 
 	return IRQ_HANDLED;
 }
+
+static irqreturn_t bmi323_trigger_handler(int irq, void *p)
+{
+	struct iio_poll_func *pf = p;
+	struct iio_dev *indio_dev = pf->indio_dev;
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	int ret;
+
+/*
+	mutex_lock(&data->mutex);
+	ret = regmap_bulk_read(data->regmap, BMC150_ACCEL_REG_XOUT_L,
+			       data->buffer, AXIS_MAX * 2);
+	mutex_unlock(&data->mutex);
+	if (ret < 0)
+		goto err_read;
+
+	iio_push_to_buffers_with_timestamp(indio_dev, data->buffer,
+					   pf->timestamp);
+err_read:
+*/
+	iio_trigger_notify_done(indio_dev->trig);
+
+
+	return IRQ_HANDLED;
+}
+
 
 static void bmc150_accel_trig_reen(struct iio_trigger *trig)
 {
@@ -1590,12 +1728,21 @@ static const struct iio_buffer_setup_ops bmc150_accel_buffer_ops = {
 	.postdisable = bmc150_accel_buffer_postdisable,
 };
 
+static const struct iio_buffer_setup_ops bmi323_buffer_ops = {
+/*
+	.preenable = bmi323_buffer_preenable,
+	.postenable = bmi323_buffer_postenable,
+	.predisable = bmi323_buffer_predisable,
+	.postdisable = bmi323_buffer_postdisable,
+*/
+};
+
 static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
 {
 	struct device *dev = regmap_get_device(data->regmap);
 	int ret, i;
 	unsigned int val;
-
+	
 	/*
 	 * Reset chip to get it in a known good state. A delay of 1.8ms after
 	 * reset is required according to the data sheets of supported chips.
@@ -1679,7 +1826,7 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
 
 	data->regmap = regmap;
 	data->type = type;
-
+	
 	if (!bmc150_apply_acpi_orientation(dev, &data->orientation)) {
 		ret = iio_read_mount_matrix(dev, &data->orientation);
 		if (ret)
@@ -1711,8 +1858,10 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
 	msleep(5);
 
 	ret = bmc150_accel_chip_init(data);
-	if (ret < 0)
+	if (ret < 0) {
+		// here data->dev_type == BMI323. I will return an error from here so that the caller can reinitialize the driver
 		goto err_disable_regulators;
+	}
 
 	mutex_init(&data->mutex);
 
@@ -1826,11 +1975,727 @@ void bmc150_accel_core_remove(struct device *dev)
 }
 EXPORT_SYMBOL_NS_GPL(bmc150_accel_core_remove, IIO_BMC150);
 
+/* =========================== BEGIN OF BCM323 FUNCTIONS ========================== */
+int bmc323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value) {
+	s32 ret;
+
+	u16 send_val = cpu_to_le16(in_value);
+
+	if (bmi323->i2c_client != NULL) {
+		ret = i2c_smbus_write_i2c_block_data(bmi323->i2c_client, in_reg, sizeof(in_value), (u8*)(&send_val));
+		if (ret != 0) {
+			dev_err(&bmi323->i2c_client->dev, "error in i2c_smbus_write_i2c_block_data = %d: reg = 0x%02x, val = 0x%02x 0x%02x", (int)ret, in_reg, ((u8*)&in_value)[0], ((u8*)&in_value)[1]);
+
+			return -2;
+		}
+
+		dev_err(&bmi323->i2c_client->dev, "success in i2c_smbus_write_i2c_block_data = %d: reg = 0x%02x, val = 0x%02x 0x%02x", (int)ret, in_reg, ((u8*)&in_value)[0], ((u8*)&in_value)[1]);
+
+		return 0;
+	} else if (bmi323->spi_client != NULL) {
+		return -4; // TODO: change with 0 once implemented
+	}
+
+	return -3;
+}
+EXPORT_SYMBOL_NS_GPL(bmc323_write_u16, IIO_BMC150);
+
+int bmc323_read_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16* out_value) {
+	s32 ret;
+	u8 read_bytes[4];
+
+	if (bmi323->i2c_client != NULL) {
+		ret = i2c_smbus_read_i2c_block_data(bmi323->i2c_client, in_reg, sizeof(read_bytes), &read_bytes[0]);
+		if (ret != 4) {
+			dev_err(bmi323->dev, "error in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x", (int)ret, in_reg);
+			return -2;
+		}
+
+		// LSB = read_bytes[2]
+		// MSB = read_bytes[3]
+		u16 output = 0;
+		u8* o = (u8*)&output;
+		o[0] = read_bytes[2];
+		o[1] = read_bytes[3];
+
+		//output = le16_to_cpu(output); // TODO: how does someone use this stuff? No documentation. IN? OUT?
+		*out_value = output;
+
+		dev_err(bmi323->dev, "success in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x, val = 0x%02x 0x%02x", (int)ret, in_reg, read_bytes[2], read_bytes[3]);
+
+		return 0;
+	} else if (bmi323->spi_client != NULL) {
+		printk(KERN_CRIT "bmi150 or bmi323: Using SPI interface?!?!? In a i2c driver? U crazy?!?!?\n");
+
+
+		return -4; // TODO: change with 0 once implemented
+	}
+
+	return -3;
+}
+EXPORT_SYMBOL_NS_GPL(bmc323_read_u16, IIO_BMC150);
+
+int bmc323_read_s16(struct bmi323_private_data *bmi323, u8 in_reg, s16* out_value) {
+	s32 ret;
+	u8 read_bytes[4];
+
+	if (bmi323->i2c_client != NULL) {
+		ret = i2c_smbus_read_i2c_block_data(bmi323->i2c_client, in_reg, sizeof(read_bytes), &read_bytes[0]);
+		if (ret != 4) {
+			dev_err(bmi323->dev, "error in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x", (int)ret, in_reg);
+			return -2;
+		}
+
+		// LSB = read_bytes[2]
+		// MSB = read_bytes[3]
+		u16 output = 0;
+		u8* o = (u8*)&output;
+		o[0] = read_bytes[2];
+		o[1] = read_bytes[3];
+
+		//output = le16_to_cpu(output); // TODO: how does someone use this stuff? No documentation. IN? OUT?
+		*((u16*)out_value) = output;
+
+		dev_err(bmi323->dev, "success in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x, val = 0x%02x 0x%02x", (int)ret, in_reg, read_bytes[2], read_bytes[3]);
+
+		return 0;
+	} else if (bmi323->spi_client != NULL) {
+		return -4; // TODO: change with 0 once implemented
+	}
+
+	return -3;
+}
+EXPORT_SYMBOL_NS_GPL(bmc323_read_s16, IIO_BMC150);
+
+int bmi323_chip_check(struct bmi323_private_data *bmi323)
+{
+	u16 chip_id;
+	int ret;
+
+	ret = bmc323_read_u16(bmi323, 0x00, &chip_id);
+	if (ret != 0) {
+		return -1;
+	}
+
+	if (((chip_id) & 0x00FF) != 0x0043) {
+		dev_err(bmi323->dev, "bmi323_chip_check failed with: %d; chip_id = 0x%04x", ret, chip_id);
+
+		return -2;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_NS_GPL(bmi323_chip_check, IIO_BMC150);
+
+/**
+ * Note: after issuing a reset the the chip will be in what it is called "suspended mode" and the feature angine is
+ * ready to be set. This mode has everything disabled and consumes aroud 15uA.
+ *
+ * When removing the driver or suspend has been requested it's best to reset the chip so that power consumption
+ * will be the lowest possible.
+ */
+int bmi323_chip_rst(struct bmi323_private_data *bmi323) {
+	u16 sensor_status = 0x0000, device_status = 0x0000;
+	int ret;
+
+	ret = bmc323_write_u16(bmi323, BCM150_BMI323_SOFT_RESET_REG, BCM150_BMI323_SOFT_RESET_VAL);
+	if (ret != 0) {
+		return -1;
+	}
+
+	/* wait the specified amount of time... better safe than sorry, no? :) */
+	msleep(5);
+
+	// if the device is connected over SPI a dummy read is to be performed once after each reset
+	if (bmi323->spi_client != NULL) {
+		dev_err(bmi323->dev, "issuing the dummy read to switch mode to SPI");
+
+		// do not even check the result of that... it's just a dummy read
+		bmi323_chip_check(bmi323);
+	}
+
+	ret = bmi323_chip_check(bmi323);
+	if (ret != 0) {
+		return -2;
+	}
+
+	// now check the correct initialization status as per datasheet
+	ret = bmc323_read_u16(bmi323, 0x01, &device_status);
+	if (ret != 0) {
+		return -3;
+	}
+
+	if ((device_status & 0x00FF) != 0x0000) {
+		dev_err(bmi323->dev, "bmi323: device_status incorrect: %d; device_status = 0x%04x", ret, device_status);
+
+		// power error
+		return -4;
+	}
+
+	// power ok
+	ret = bmc323_read_u16(bmi323, 0x02, &sensor_status);
+	if (ret != 0) {
+		return -5;
+	}
+
+	if ((sensor_status & 0x00FF) != 0x0001) {
+		if (bmi323->i2c_client != NULL) {
+			dev_err(&bmi323->i2c_client->dev, "bmi323: sensor_status incorrect: %d; sensor_status = 0x%04x", ret, sensor_status);
+		} else if (bmi323->spi_client != NULL) {
+			dev_err(&bmi323->spi_client->dev, "bmi323: sensor_status incorrect: %d; sensor_status = 0x%04x", ret, sensor_status);
+		}
+
+		// initialization error
+		return -6;
+	}
+
+	// initialization ok
+	return 0;
+}
+EXPORT_SYMBOL_NS_GPL(bmi323_chip_rst, IIO_BMC150);
+
+static const struct iio_chan_spec bmi323_channels[] = {
+	{
+		.type = IIO_TEMP,
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
+				      BIT(IIO_CHAN_INFO_SCALE) |
+				      BIT(IIO_CHAN_INFO_OFFSET),
+		.scan_index = -1,
+	},
+	BMI323_ACCEL_CHANNEL(X, 16),
+	BMI323_ACCEL_CHANNEL(Y, 16),
+	BMI323_ACCEL_CHANNEL(Z, 16),
+	BMI323_GYRO_CHANNEL(X, 16),
+	BMI323_GYRO_CHANNEL(Y, 16),
+	BMI323_GYRO_CHANNEL(Z, 16),
+	IIO_CHAN_SOFT_TIMESTAMP(6),
+};
+
+/*
+static struct attribute *bmi323_accel_attributes[] = {
+	&iio_const_attr_sampling_frequency_available.dev_attr.attr,
+	NULL,
+};
+*/
+
+static const struct attribute_group bmi323_accel_attrs_group = {
+	//.attrs = bmi323_accel_attributes,
+};
+
+static const struct bmi323_scale_info bmi323_accel_scale_table[] = {
+	{153229, BMI323_ACCEL_DEF_RANGE_2G},
+	{306458, BMI323_ACCEL_DEF_RANGE_4G},
+	{612916, BMI323_ACCEL_DEF_RANGE_8G},
+	{1225831, BMI323_ACCEL_DEF_RANGE_16G}
+};
+
+static const struct bmi323_scale_info bmi323_gyro_scale_table[] = {
+	{153229, BMI323_GYRO_DEF_RANGE_2G},
+	{306458, BMI323_GYRO_DEF_RANGE_4G},
+	{612916, BMI323_GYRO_DEF_RANGE_2KDPS},
+	{1225831, BMI323_GYRO_DEF_RANGE_16G}
+};
+
+static int bmi323_read_raw(struct iio_dev *indio_dev,
+				 struct iio_chan_spec const *chan,
+				 int *val, int *val2, long mask)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	int ret;
+	u16 raw_read = 0x8000;
+	u8 reg = 0x00;
+
+	printk(KERN_CRIT "bmc150 bmi323_read_raw\n");
+
+	switch (mask) {
+	case IIO_CHAN_INFO_RAW:
+		{
+			switch (chan->type) {
+			case IIO_TEMP:
+				reg = 0x09;
+				ret = bmc323_read_s16(&data->bmi323, reg, &raw_read);
+				if (ret != 0) {
+					//return -EBUSY;
+					return -EINVAL;
+				}
+
+				*val = cpu_to_le32((int)raw_read);
+				return IIO_VAL_INT;
+
+			case IIO_ACCEL:
+				if (iio_buffer_enabled(indio_dev)) {
+					//return -EBUSY;
+					return -EINVAL;
+				}
+
+				reg = 0x03 + (u8)(chan->scan_index);
+
+				ret = bmc323_read_s16(&data->bmi323, reg, &raw_read);
+				if (ret != 0) {
+					return -EINVAL;
+				}
+				*val = cpu_to_le32((int)raw_read);
+				return IIO_VAL_INT;
+
+			case IIO_ANGL_VEL:
+				if (iio_buffer_enabled(indio_dev)) {
+					//return -EBUSY;
+					return -EINVAL;
+				}
+
+				reg = 0x03 + (u8)(chan->scan_index);
+
+				ret = bmc323_read_s16(&data->bmi323, reg, &raw_read);
+				if (ret != 0) {
+					return -EINVAL;
+				}
+				*val = cpu_to_le32((int)raw_read);
+				return IIO_VAL_INT;
+			default:
+				return -EINVAL;
+			}
+		}
+	case IIO_CHAN_INFO_OFFSET:
+		{
+			if (chan->type == IIO_TEMP) {
+				*val = BMC150_ACCEL_TEMP_CENTER_VAL;
+				return IIO_VAL_INT;
+			}
+			
+			return -EINVAL;
+		}
+	case IIO_CHAN_INFO_SCALE:
+		*val = 0;
+		switch (chan->type) {
+		case IIO_TEMP:
+			*val2 = 500000;
+			return IIO_VAL_INT_PLUS_MICRO;
+		case IIO_ACCEL:
+		{
+			int i;
+			const struct bmi323_scale_info *si = &bmi323_accel_scale_table[2];
+			int st_size = ARRAY_SIZE(bmi323_accel_scale_table);
+
+			// TODO: hardcoded for now
+			*val2 = si->scale;
+			return IIO_VAL_INT_PLUS_MICRO;
+/*
+			for (i = 0; i < st_size; ++i) {
+				si = &data->chip_info->scale_table[i];
+				if (si->reg_range == data->range) {
+					*val2 = si->scale;
+					return IIO_VAL_INT_PLUS_MICRO;
+				}
+			}
+*/
+			return -EINVAL;
+		}
+		case IIO_ANGL_VEL:
+		{
+			int i;
+			const struct bmi323_scale_info *si = &bmi323_gyro_scale_table[2];
+			int st_size = ARRAY_SIZE(bmi323_gyro_scale_table);
+
+			// TODO: hardcoded for now
+			*val2 = si->scale;
+			return IIO_VAL_INT_PLUS_MICRO;
+
+/*
+			for (i = 0; i < st_size; ++i) {
+				si = &data->chip_info->scale_table[i];
+				if (si->reg_range == data->range) {
+					*val2 = si->scale;
+					return IIO_VAL_INT_PLUS_MICRO;
+				}
+			}
+*/
+
+			return -EINVAL;
+		}
+
+		default:
+			return -EINVAL;
+		}
+	case IIO_CHAN_INFO_SAMP_FREQ:
+		switch (chan->type) {
+		case IIO_TEMP:
+				*val = 0;
+				*val2 = 0;
+				return IIO_VAL_INT_PLUS_MICRO;
+
+			case IIO_ACCEL:
+				*val = 0;
+				*val2 = 0;
+				return IIO_VAL_INT_PLUS_MICRO;
+
+			case IIO_ANGL_VEL:
+				*val = 0;
+				*val2 = 0;
+				return IIO_VAL_INT_PLUS_MICRO;
+		}
+
+		return -EINVAL;
+		/*
+		mutex_lock(&data->mutex);
+		ret = bmc150_accel_get_bw(data, val, val2);
+		mutex_unlock(&data->mutex);
+		return ret;
+		*/
+	default:
+		return -EINVAL;
+	}
+}
+
+static int bmi323_write_raw(struct iio_dev *indio_dev,
+				  struct iio_chan_spec const *chan,
+				  int val, int val2, long mask)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	int ret;
+
+	printk(KERN_CRIT "bmc150 bmi323_write_raw\n");
+
+/*
+	switch (mask) {
+	case IIO_CHAN_INFO_SAMP_FREQ:
+		mutex_lock(&data->mutex);
+		ret = bmc150_accel_set_bw(data, val, val2);
+		mutex_unlock(&data->mutex);
+		break;
+	case IIO_CHAN_INFO_SCALE:
+		if (val)
+			return -EINVAL;
+
+		mutex_lock(&data->mutex);
+		ret = bmc150_accel_set_scale(data, val2);
+		mutex_unlock(&data->mutex);
+		return ret;
+	default:
+		ret = -EINVAL;
+	}
+*/
+
+	return ret;
+}
+
+static int bmi323_read_event(struct iio_dev *indio_dev,
+				   const struct iio_chan_spec *chan,
+				   enum iio_event_type type,
+				   enum iio_event_direction dir,
+				   enum iio_event_info info,
+				   int *val, int *val2)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	printk(KERN_CRIT "bmc150 bmi323_read_event\n");
+
+/*
+	*val2 = 0;
+	switch (info) {
+	case IIO_EV_INFO_VALUE:
+		*val = data->slope_thres;
+		break;
+	case IIO_EV_INFO_PERIOD:
+		*val = data->slope_dur;
+		break;
+	default:
+		return -EINVAL;
+	}
+*/
+
+	return IIO_VAL_INT;
+}
+
+static int bmi323_write_event(struct iio_dev *indio_dev,
+				    const struct iio_chan_spec *chan,
+				    enum iio_event_type type,
+				    enum iio_event_direction dir,
+				    enum iio_event_info info,
+				    int val, int val2)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	printk(KERN_CRIT "bmc150 bmi323_write_event\n");
+
+/*
+	if (data->ev_enable_state)
+		return -EBUSY;
+
+	switch (info) {
+	case IIO_EV_INFO_VALUE:
+		data->slope_thres = val & BMC150_ACCEL_SLOPE_THRES_MASK;
+		break;
+	case IIO_EV_INFO_PERIOD:
+		data->slope_dur = val & BMC150_ACCEL_SLOPE_DUR_MASK;
+		break;
+	default:
+		return -EINVAL;
+	}
+*/
+
+	return 0;
+}
+
+static int bmi323_read_event_config(struct iio_dev *indio_dev,
+					  const struct iio_chan_spec *chan,
+					  enum iio_event_type type,
+					  enum iio_event_direction dir)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	printk(KERN_CRIT "bmc150 bmi323_read_event_config\n");
+
+	return 0;
+}
+
+static int bmi323_write_event_config(struct iio_dev *indio_dev,
+					   const struct iio_chan_spec *chan,
+					   enum iio_event_type type,
+					   enum iio_event_direction dir,
+					   int state)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	int ret;
+
+	printk(KERN_CRIT "bmc150 bmi323_write_event_config\n");
+
+/*
+	if (state == data->ev_enable_state)
+		return 0;
+
+	mutex_lock(&data->mutex);
+
+	ret = bmc150_accel_set_interrupt(data, BMC150_ACCEL_INT_ANY_MOTION,
+					 state);
+	if (ret < 0) {
+		mutex_unlock(&data->mutex);
+		return ret;
+	}
+
+	data->ev_enable_state = state;
+	mutex_unlock(&data->mutex);
+*/
+
+	return 0;
+}
+
+static const struct iio_info bmi323_accel_info = {
+	.attrs			= &bmi323_accel_attrs_group,
+	.read_raw		= bmi323_read_raw,
+	//.write_raw		= bmi323_write_raw,
+	//.read_event_value	= bmi323_read_event,
+	//.write_event_value	= bmi323_write_event,
+	//.write_event_config	= bmi323_write_event_config,
+	//.read_event_config	= bmc150_accel_read_event_config,
+};
+
+
+/**
+ * iio_simple_dummy_trigger_h() - the trigger handler function
+ * @irq: the interrupt number
+ * @p: private data - always a pointer to the poll func.
+ *
+ * This is the guts of buffered capture. On a trigger event occurring,
+ * if the pollfunc is attached then this handler is called as a threaded
+ * interrupt (and hence may sleep). It is responsible for grabbing data
+ * from the device and pushing it into the associated buffer.
+ */
+static irqreturn_t iio_bmi323_trigger_h(int irq, void *p)
+{
+	struct iio_poll_func *pf = p;
+	struct iio_dev *indio_dev = pf->indio_dev;
+	u16 *data;
+	struct bmc150_accel_data *indio_data = iio_priv(indio_dev);
+
+	/*data = kmalloc(indio_dev->scan_bytes, GFP_KERNEL);
+	if (!data)
+		goto bmi323_irq_done;*/
+
+	/*
+	CHANNEL			scan_index
+	==========================
+	TEMP				-1
+	ACCEL_X				0
+	ACCEL_Y				1
+	ACCEL_Y				2
+	GYRO_X				3
+	GYRO_Y				4
+	GYRO_Z				5
+	TIMESTAMP			?
+	*/
+
+	/*int ret = 0;
+	u8 read_bytes[] = { 0xFF, 0xFF, 0xFF, 0xFF};
+	int d_idx = 0;
+	u8 reg = 0x03;
+	for (u32 i = 0; i < indio_dev->masklength; ++i) {
+		if (((0x0001U << i) & (*indio_dev->active_scan_mask)) != 0) {
+			
+			struct i2c_client*  i2c_dev = indio_data->bmi323.i2c_client;
+			if (i2c_dev != NULL) {
+				ret = i2c_smbus_read_i2c_block_data(i2c_dev, reg + i, sizeof(read_bytes), &read_bytes[0]);
+				if (ret != 4) {
+					goto bmi323_irq_done;
+				}
+
+				data[d_idx++] = ((u16)read_bytes[2] << (u16)8U) | ((u16)read_bytes[3]);
+			} else {
+				// TODO: what about SPI?
+				goto bmi323_irq_done;
+			}
+		}
+	}*/
+
+	/*
+	 * Three common options here:
+	 * hardware scans:
+	 *   certain combinations of channels make up a fast read. The capture
+	 *   will consist of all of them. Hence we just call the grab data
+	 *   function and fill the buffer without processing.
+	 * software scans:
+	 *   can be considered to be random access so efficient reading is just
+	 *   a case of minimal bus transactions.
+	 * software culled hardware scans:
+	 *   occasionally a driver may process the nearest hardware scan to avoid
+	 *   storing elements that are not desired. This is the fiddliest option
+	 *   by far.
+	 * Here let's pretend we have random access. And the values are in the
+	 * constant table fakedata.
+	 */
+	int j = 0, i = 0;
+	for_each_set_bit(j, indio_dev->active_scan_mask, indio_dev->masklength)
+		data[i++] = 0xFFFF;
+
+	iio_push_to_buffers_with_timestamp(indio_dev, data,
+					   iio_get_time_ns(indio_dev));
+
+	kfree(data);
+
+bmi323_irq_done:
+	/*
+	 * Tell the core we are done with this trigger and ready for the
+	 * next one.
+	 */
+	iio_trigger_notify_done(indio_dev->trig);
+
+	return IRQ_HANDLED;
+}
+
+/*
+BMI323_GYRO_AXIS_Z,
+*/
+static const unsigned long bmi323_accel_scan_masks[] = {
+					BIT(BMI323_ACCEL_AXIS_X) | BIT(BMI323_ACCEL_AXIS_Y) | BIT(BMI323_ACCEL_AXIS_Z),
+					BIT(BMI323_GYRO_AXIS_X) | BIT(BMI323_GYRO_AXIS_Y) | BIT(BMI323_GYRO_AXIS_Z),
+					0};
+
+int bmi323_iio_init(struct iio_dev *indio_dev) {
+	const struct iio_dev_attr **fifo_attrs = NULL;
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	struct device* dev = NULL;
+
+	if (data->bmi323.i2c_client != NULL) {
+		data->bmi323.dev = &data->bmi323.i2c_client->dev;
+	} else if (&data->bmi323.spi_client != NULL) {
+		data->bmi323.dev = &data->bmi323.spi_client->dev;
+	} else {
+		return -ENODEV;
+	}
+
+	int ret = 0;
+
+	mutex_init(&data->bmi323.mutex);
+
+	// now set normal mode...
+	// normal mode: 0x4000
+	// no averaging: 0x0000
+	// range 8g: 0x0020
+	// ODR 50Hz: 0x0007
+	ret = bmc323_write_u16(&data->bmi323, 0x20, 0x4027);
+	if (ret != 0) {
+		return -1;
+	}
+
+	// now set normal mode...
+	// normal mode: 0x4000
+	// no averaging: 0x0000
+	// filtering to ODR/2: 0x0000
+	// range: 2kdps: 0x0040
+	// ODR 800Hz
+	ret = bmc323_write_u16(&data->bmi323, 0x21, 0x4027);
+	if (ret != 0) {
+		return -2;
+	}
+
+	indio_dev->channels = bmi323_channels;
+	indio_dev->num_channels = ARRAY_SIZE(bmi323_channels);
+	indio_dev->name = "bmi323";
+	indio_dev->available_scan_masks = bmi323_accel_scan_masks;
+	indio_dev->modes = INDIO_DIRECT_MODE;
+	indio_dev->info = &bmi323_accel_info;
+
+	/*
+	ret = iio_triggered_buffer_setup_ext(indio_dev,
+					     &iio_pollfunc_store_time,
+					     bmi323_trigger_handler,
+					     IIO_BUFFER_DIRECTION_IN,
+					     &bmi323_buffer_ops,
+					     fifo_attrs);
+	if (ret < 0) {
+		dev_err(dev, "Failed: iio triggered buffer setup\n");
+		return -500;
+	}
+	*/
+
+	ret = iio_triggered_buffer_setup(indio_dev, NULL,
+					  iio_bmi323_trigger_h,
+					  &bmi323_buffer_ops);
+	if (ret < 0) {
+		dev_err(dev, "Failed: iio triggered buffer setup\n");
+		return -500;
+	}
+
+	if (data->bmi323.irq > 0) {
+		dev_err(data->bmi323.dev, "IRQ pin connected: %d :)", data->bmi323.irq);
+	} else {
+		dev_err(data->bmi323.dev, "IRQ pin NOT connected: %d :(", data->bmi323.irq);
+	}
+
+	// TODO: look at https://www.kernel.org/doc/html/latest/driver-api/iio/core.html
+	ret = iio_device_register(indio_dev);
+	if (ret < 0) {
+		//dev_err(dev, "bmi323 unable to register iio device\n");
+		return ret;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_NS_GPL(bmi323_iio_init, IIO_BMC150);
+
+
+/* ============================ END OF BCM323 FUNCTIONS =========================== */
+
 #ifdef CONFIG_PM_SLEEP
 static int bmc150_accel_suspend(struct device *dev)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	int ret;
+
+	if (data->dev_type == BMI323) {
+		dev_err(dev, "bmi323 suspending driver...");
+
+		ret = bmi323_chip_rst(&data->bmi323);
+		if (ret != 0) {
+			data->bmi323.flags |= BMI323_FLAGS_RESET_FAILED;
+
+			dev_err(dev, "bmi323 error in resetting the chip on suspend: will sleep in high consumption mode.");
+		}
+
+		// TODO: do something here
+		return 0;
+	}
 
 	mutex_lock(&data->mutex);
 	bmc150_accel_set_mode(data, BMC150_ACCEL_SLEEP_MODE_SUSPEND, 0);
@@ -1843,6 +2708,29 @@ static int bmc150_accel_resume(struct device *dev)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	int ret;
+
+	if (data->dev_type == BMI323) {
+		dev_err(dev, "bmi323 resuming driver...");
+
+		if ((data->bmi323.flags & BMI323_FLAGS_RESET_FAILED) != 0) {
+			dev_err(dev, "bmi323 was left in a dirty state: resetting the chip now...");
+
+			ret = bmi323_chip_rst(&data->bmi323);
+			if (ret != 0) {
+				dev_err(dev, "bmi323 error in resetting the chip on resume. All hope is gone.");
+
+				return ret;
+			}
+
+			data->bmi323.flags &= ~BMI323_FLAGS_RESET_FAILED;
+		}
+
+		// TODO: set the correct power mode (and re-enable triggers?)
+		
+		return 0;
+	}
 
 	mutex_lock(&data->mutex);
 	bmc150_accel_set_mode(data, BMC150_ACCEL_SLEEP_MODE_NORMAL, 0);
@@ -1863,6 +2751,11 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
 	int ret;
 
+	if (data->dev_type == BMI323) {
+		// TODO: do something here
+		return 0;
+	}
+
 	ret = bmc150_accel_set_mode(data, BMC150_ACCEL_SLEEP_MODE_SUSPEND, 0);
 	if (ret < 0)
 		return -EAGAIN;
@@ -1876,6 +2769,11 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
 	int ret;
 	int sleep_val;
+
+	if (data->dev_type == BMI323) {
+		// TODO: do something here
+		return 0;
+	}
 
 	ret = bmc150_accel_set_mode(data, BMC150_ACCEL_SLEEP_MODE_NORMAL, 0);
 	if (ret < 0)

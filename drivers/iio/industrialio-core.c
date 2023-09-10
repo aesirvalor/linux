@@ -1523,8 +1523,10 @@ static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 
 			if (chan->type == IIO_TIMESTAMP)
 				clk = &dev_attr_current_timestamp_clock.attr;
-
+			
+			dev_err(NULL, "    begin iio_device_add_channel_sysfs #%d/%d", i, (int)indio_dev->num_channels);
 			ret = iio_device_add_channel_sysfs(indio_dev, chan);
+			dev_err(NULL, "    end iio_device_add_channel_sysfs #%d/%d", i, (int)indio_dev->num_channels);
 			if (ret < 0)
 				goto error_clear_attrs;
 			attrcount += ret;
@@ -1540,20 +1542,24 @@ static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 	if (clk)
 		attrcount++;
 
+	dev_err(NULL, "    begin kcalloc");
 	iio_dev_opaque->chan_attr_group.attrs =
 		kcalloc(attrcount + 1,
 			sizeof(iio_dev_opaque->chan_attr_group.attrs[0]),
 			GFP_KERNEL);
+	dev_err(NULL, "    end kcalloc");
 	if (iio_dev_opaque->chan_attr_group.attrs == NULL) {
 		ret = -ENOMEM;
 		goto error_clear_attrs;
 	}
 	/* Copy across original attributes, and point to original binary attributes */
 	if (indio_dev->info->attrs) {
+		dev_err(NULL, "    begin memcpy");
 		memcpy(iio_dev_opaque->chan_attr_group.attrs,
 		       indio_dev->info->attrs->attrs,
 		       sizeof(iio_dev_opaque->chan_attr_group.attrs[0])
 		       *attrcount_orig);
+		dev_err(NULL, "    end memcpy");
 		iio_dev_opaque->chan_attr_group.is_visible =
 			indio_dev->info->attrs->is_visible;
 		iio_dev_opaque->chan_attr_group.bin_attrs =
@@ -1561,8 +1567,10 @@ static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 	}
 	attrn = attrcount_orig;
 	/* Add all elements from the list. */
+	dev_err(NULL, "    begin list_for_each_entry");
 	list_for_each_entry(p, &iio_dev_opaque->channel_attr_list, l)
 		iio_dev_opaque->chan_attr_group.attrs[attrn++] = &p->dev_attr.attr;
+	dev_err(NULL, "    end list_for_each_entry");
 	if (indio_dev->name)
 		iio_dev_opaque->chan_attr_group.attrs[attrn++] = &dev_attr_name.attr;
 	if (indio_dev->label)
@@ -1570,15 +1578,19 @@ static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 	if (clk)
 		iio_dev_opaque->chan_attr_group.attrs[attrn++] = clk;
 
+	dev_err(NULL, "    begin iio_device_register_sysfs_group");
 	ret = iio_device_register_sysfs_group(indio_dev,
 					      &iio_dev_opaque->chan_attr_group);
+	dev_err(NULL, "    end iio_device_register_sysfs_group");
 	if (ret)
 		goto error_clear_attrs;
 
 	return 0;
 
 error_clear_attrs:
+	dev_err(NULL, "    ERROR HERE: begin iio_free_chan_devattr_list");
 	iio_free_chan_devattr_list(&iio_dev_opaque->channel_attr_list);
+	dev_err(NULL, "    ERROR HERE: end iio_free_chan_devattr_list");
 
 	return ret;
 }
@@ -1856,8 +1868,8 @@ static int iio_check_unique_scan_index(struct iio_dev *indio_dev)
 		for (j = i + 1; j < indio_dev->num_channels; j++)
 			if (channels[i].scan_index == channels[j].scan_index) {
 				dev_err(&indio_dev->dev,
-					"Duplicate scan index %d\n",
-					channels[i].scan_index);
+					"Duplicate scan index %d at elements (%d, %d)\n",
+					channels[i].scan_index, i , j);
 				return -EINVAL;
 			}
 	}
@@ -1887,12 +1899,15 @@ static const struct iio_buffer_setup_ops noop_ring_setup_ops;
 
 int __iio_device_register(struct iio_dev *indio_dev, struct module *this_mod)
 {
+	dev_err(NULL, "begin __iio_device_register\n");
 	struct iio_dev_opaque *iio_dev_opaque = to_iio_dev_opaque(indio_dev);
 	struct fwnode_handle *fwnode = NULL;
 	int ret;
 
 	if (!indio_dev->info)
 		return -EINVAL;
+
+	dev_err(NULL, "  indio_dev->info is NOT NULL\n");	
 
 	iio_dev_opaque->driver_module = this_mod;
 
@@ -1902,60 +1917,95 @@ int __iio_device_register(struct iio_dev *indio_dev, struct module *this_mod)
 	/* The default dummy IIO device has no parent */
 	else if (indio_dev->dev.parent)
 		fwnode = dev_fwnode(indio_dev->dev.parent);
+
+	dev_err(NULL, "  begin device_set_node\n");
 	device_set_node(&indio_dev->dev, fwnode);
+	dev_err(NULL, "  end device_set_node\n");
 
+	dev_err(NULL, "  begin fwnode_property_read_string\n");
 	fwnode_property_read_string(fwnode, "label", &indio_dev->label);
+	dev_err(NULL, "  end fwnode_property_read_string\n");
 
+	dev_err(NULL, "  begin iio_check_unique_scan_index\n");
 	ret = iio_check_unique_scan_index(indio_dev);
+	dev_err(NULL, "  end iio_check_unique_scan_index\n");
 	if (ret < 0)
 		return ret;
 
+	dev_err(NULL, "  begin iio_check_extended_name\n");
 	ret = iio_check_extended_name(indio_dev);
+	dev_err(NULL, "  end iio_check_extended_name\n");
 	if (ret < 0)
 		return ret;
 
+	dev_err(NULL, "  begin iio_device_register_debugfs\n");
 	iio_device_register_debugfs(indio_dev);
+	dev_err(NULL, "  end iio_device_register_debugfs\n");
 
+	dev_err(NULL, "  begin iio_buffers_alloc_sysfs_and_mask\n");
 	ret = iio_buffers_alloc_sysfs_and_mask(indio_dev);
+	dev_err(NULL, "  end iio_buffers_alloc_sysfs_and_mask\n");
 	if (ret) {
 		dev_err(indio_dev->dev.parent,
 			"Failed to create buffer sysfs interfaces\n");
 		goto error_unreg_debugfs;
 	}
 
+	dev_err(NULL, "  begin iio_device_register_sysfs\n");
 	ret = iio_device_register_sysfs(indio_dev);
+	dev_err(NULL, "  end iio_device_register_sysfs\n");
 	if (ret) {
 		dev_err(indio_dev->dev.parent,
 			"Failed to register sysfs interfaces\n");
 		goto error_buffer_free_sysfs;
 	}
+
+	dev_err(NULL, "  begin iio_device_register_eventset\n");
 	ret = iio_device_register_eventset(indio_dev);
+	dev_err(NULL, "  end iio_device_register_eventset\n");
 	if (ret) {
 		dev_err(indio_dev->dev.parent,
 			"Failed to register event set\n");
 		goto error_free_sysfs;
 	}
-	if (indio_dev->modes & INDIO_ALL_TRIGGERED_MODES)
+	if (indio_dev->modes & INDIO_ALL_TRIGGERED_MODES) {
+		dev_err(NULL, "  begin iio_device_register_trigger_consumer\n");
 		iio_device_register_trigger_consumer(indio_dev);
+		dev_err(NULL, "  end iio_device_register_trigger_consumer\n");
+	} else {
+		dev_err(NULL, "  no iio_device_register_trigger_consumer performed\n");
+	}
 
 	if ((indio_dev->modes & INDIO_ALL_BUFFER_MODES) &&
 		indio_dev->setup_ops == NULL)
 		indio_dev->setup_ops = &noop_ring_setup_ops;
 
-	if (iio_dev_opaque->attached_buffers_cnt)
+	if (iio_dev_opaque->attached_buffers_cnt) {
+		dev_err(NULL, "  begin cdev_init 1\n");
 		cdev_init(&iio_dev_opaque->chrdev, &iio_buffer_fileops);
-	else if (iio_dev_opaque->event_interface)
+		dev_err(NULL, "  end cdev_init 1\n");
+	}
+	else if (iio_dev_opaque->event_interface) {
+		dev_err(NULL, "  begin cdev_init 2\n");
 		cdev_init(&iio_dev_opaque->chrdev, &iio_event_fileops);
+		dev_err(NULL, "  end cdev_init 1\n");
+	} else {
+		dev_err(NULL, "  no cdev_init\n");
+	}
 
 	if (iio_dev_opaque->attached_buffers_cnt || iio_dev_opaque->event_interface) {
+		dev_err(NULL, "  begin MKDEV\n");
 		indio_dev->dev.devt = MKDEV(MAJOR(iio_devt), iio_dev_opaque->id);
 		iio_dev_opaque->chrdev.owner = this_mod;
+		dev_err(NULL, "  end MKDEV\n");
 	}
 
 	/* assign device groups now; they should be all registered now */
 	indio_dev->dev.groups = iio_dev_opaque->groups;
 
+	dev_err(NULL, "  begin cdev_device_add\n");
 	ret = cdev_device_add(&iio_dev_opaque->chrdev, &indio_dev->dev);
+	dev_err(NULL, "  end cdev_device_add\n");
 	if (ret < 0)
 		goto error_unreg_eventset;
 
