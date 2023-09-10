@@ -2125,8 +2125,8 @@ EXPORT_SYMBOL_NS_GPL(bmi323_chip_rst, IIO_BMC150);
 static const struct iio_chan_spec bmi323_channels[] = {
 	{
 		.type = IIO_TEMP,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-				      /*BIT(IIO_CHAN_INFO_SCALE) |
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) /*|
+				      BIT(IIO_CHAN_INFO_SCALE) |
 				      BIT(IIO_CHAN_INFO_OFFSET)*/,
 		.scan_index = -1,
 	},
