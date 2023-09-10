@@ -2633,6 +2633,7 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	indio_dev->available_scan_masks = bmi323_accel_scan_masks;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->info = &bmi323_accel_info;
+	indio_dev->label = "bmi323-accel_base";
 
 	/*
 	ret = iio_triggered_buffer_setup_ext(indio_dev,
