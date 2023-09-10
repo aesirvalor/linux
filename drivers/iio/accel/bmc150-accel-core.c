@@ -2169,9 +2169,11 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				 int *val, int *val2, long mask)
 {
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
-	int ret;
+	int ret = -EINVAL;
 	u16 raw_read = 0x8000;
 	u8 reg = 0x00;
+
+	mutex_lock(&data->bmi323.mutex);
 
 	printk(KERN_CRIT "bmc150 bmi323_read_raw\n");
 
@@ -2181,13 +2183,23 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 			switch (chan->type) {
 			case IIO_TEMP:
 				reg = 0x09;
-				ret = bmc323_read_u16(&data->bmi323, reg, &raw_read);
+
+				ret = iio_device_claim_direct_mode(indio_dev);
 				if (ret != 0) {
+					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_TEMP iio_device_claim_direct_mode returned %d\n", ret);
+					goto bmi323_read_raw_error;
+				}
+
+				ret = bmc323_read_u16(&data->bmi323, reg, &raw_read);
+				iio_device_release_direct_mode(indio_dev); // do not swap with the following if!!!
+				if (ret != 0) {
+					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_TEMP bmc323_read_u16 returned %d\n", ret);
 					//return -EBUSY;
-					return -EINVAL;
+					goto bmi323_read_raw_error;
 				}
 
 				*val = cpu_to_le32((int)raw_read);
+				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT;
 
 			case IIO_ACCEL:
@@ -2200,7 +2212,8 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 				ret = iio_device_claim_direct_mode(indio_dev);
 				if (ret != 0) {
-					return ret;
+					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_ACCEL iio_device_claim_direct_mode returned %d\n", ret);
+					goto bmi323_read_raw_error;
 				}
 
 				reg = 0x03 + (u8)(chan->scan_index);
@@ -2208,9 +2221,11 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				ret = bmc323_read_u16(&data->bmi323, reg, &raw_read);
 				iio_device_release_direct_mode(indio_dev); // do not swap with the following if!!!
 				if (ret != 0) {
-					return -EINVAL;
+					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_ACCEL bmc323_read_u16 returned %d\n", ret);
+					goto bmi323_read_raw_error;
 				}
 				*val = cpu_to_le32((int)raw_read);
+				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT;
 
 			case IIO_ANGL_VEL:
@@ -2223,7 +2238,8 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 				ret = iio_device_claim_direct_mode(indio_dev);
 				if (ret != 0) {
-					return ret;
+					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_ANGL_VEL iio_device_claim_direct_mode returned %d\n", ret);
+					goto bmi323_read_raw_error;
 				}
 
 				reg = 0x03 + (u8)(chan->scan_index);
@@ -2231,29 +2247,39 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				ret = bmc323_read_u16(&data->bmi323, reg, &raw_read);
 				iio_device_release_direct_mode(indio_dev); // do not swap with the following if!!!
 				if (ret != 0) {
-					return ret;
+					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_ANGL_VEL bmc323_read_u16 returned %d\n", ret);
+					goto bmi323_read_raw_error;
 				}
 
 				*val = cpu_to_le32((int)raw_read);
+				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT;
 			default:
-				return -EINVAL;
+				goto bmi323_read_raw_error;
 			}
 		}
 	case IIO_CHAN_INFO_OFFSET:
 		{
+			printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_OFFSET\n");
+			goto bmi323_read_raw_error;
 			if (chan->type == IIO_TEMP) {
+				printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_OFFSET\n");
 				*val = BMC150_ACCEL_TEMP_CENTER_VAL;
+				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT;
 			}
 			
+			mutex_unlock(&data->bmi323.mutex);
 			return -EINVAL;
 		}
 	case IIO_CHAN_INFO_SCALE:
+		printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SCALE\n");
+		goto bmi323_read_raw_error;
 		*val = 0;
 		switch (chan->type) {
 		case IIO_TEMP:
 			*val2 = 500000;
+			mutex_unlock(&data->bmi323.mutex);
 			return IIO_VAL_INT_PLUS_MICRO;
 		case IIO_ACCEL:
 		{
@@ -2269,11 +2295,12 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				si = &data->chip_info->scale_table[i];
 				if (si->reg_range == data->range) {
 					*val2 = si->scale;
+					mutex_unlock(&data->bmi323.mutex);
 					return IIO_VAL_INT_PLUS_MICRO;
 				}
 			}
 */
-			return -EINVAL;
+			goto bmi323_read_raw_error;
 		}
 		case IIO_ANGL_VEL:
 		{
@@ -2283,6 +2310,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 			// TODO: hardcoded for now
 			*val2 = si->scale;
+			mutex_unlock(&data->bmi323.mutex);
 			return IIO_VAL_INT_PLUS_MICRO;
 
 /*
@@ -2290,36 +2318,42 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				si = &data->chip_info->scale_table[i];
 				if (si->reg_range == data->range) {
 					*val2 = si->scale;
+					mutex_unlock(&data->bmi323.mutex);
 					return IIO_VAL_INT_PLUS_MICRO;
 				}
 			}
 */
 
-			return -EINVAL;
+			goto bmi323_read_raw_error;
 		}
 
 		default:
-			return -EINVAL;
+			printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_????? default case\n");
+			goto bmi323_read_raw_error;
 		}
 	case IIO_CHAN_INFO_SAMP_FREQ:
+		printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ\n");
 		switch (chan->type) {
 		case IIO_TEMP:
 				*val = 0;
 				*val2 = 0;
+				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT_PLUS_MICRO;
 
 			case IIO_ACCEL:
 				*val = 0;
 				*val2 = 0;
+				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT_PLUS_MICRO;
 
 			case IIO_ANGL_VEL:
 				*val = 0;
 				*val2 = 0;
+				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT_PLUS_MICRO;
 		}
 
-		return -EINVAL;
+		goto bmi323_read_raw_error;
 		/*
 		mutex_lock(&data->mutex);
 		ret = bmc150_accel_get_bw(data, val, val2);
@@ -2327,8 +2361,13 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 		return ret;
 		*/
 	default:
-		return -EINVAL;
+		printk(KERN_CRIT "bmc150 bmi323_read_raw BAAAAAAAAAD\n");
+		goto bmi323_read_raw_error;
 	}
+
+bmi323_read_raw_error:
+	mutex_unlock(&data->bmi323.mutex);
+	return ret;
 }
 
 static int bmi323_write_raw(struct iio_dev *indio_dev,
@@ -2657,7 +2696,6 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	return 0;
 }
 EXPORT_SYMBOL_NS_GPL(bmi323_iio_init, IIO_BMC150);
-
 
 /* ============================ END OF BCM323 FUNCTIONS =========================== */
 
