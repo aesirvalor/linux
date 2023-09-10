@@ -2174,9 +2174,11 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 	u16 raw_read = 0x8000;
 	u8 reg = 0x00;
 
+	printk(KERN_CRIT "bmc150 bmi323_read_raw\n");
+
 	mutex_lock(&data->bmi323.mutex);
 
-	printk(KERN_CRIT "bmc150 bmi323_read_raw\n");
+	printk(KERN_CRIT "bmc150 bmi323_read_raw mutex taken\n");
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
@@ -2195,7 +2197,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				iio_device_release_direct_mode(indio_dev); // do not swap with the following if!!!
 				if (ret != 0) {
 					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_TEMP bmc323_read_u16 returned %d\n", ret);
-					//return -EBUSY;
 					goto bmi323_read_raw_error;
 				}
 
@@ -2206,7 +2207,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 			case IIO_ACCEL:
 				/*
 				if (iio_buffer_enabled(indio_dev)) {
-					//return -EBUSY;
 					return -EINVAL;
 				}
 				*/
