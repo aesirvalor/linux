@@ -1500,17 +1500,26 @@ static DEVICE_ATTR_RW(current_timestamp_clock);
 
 static int iio_device_register_sysfs(struct iio_dev *indio_dev)
 {
+	dev_err(NULL, "    begin to_iio_dev_opaque");
 	struct iio_dev_opaque *iio_dev_opaque = to_iio_dev_opaque(indio_dev);
 	int i, ret = 0, attrcount, attrn, attrcount_orig = 0;
 	struct iio_dev_attr *p;
 	struct attribute **attr, *clk = NULL;
+	dev_err(NULL, "    end to_iio_dev_opaque");
 
 	/* First count elements in any existing group */
+	dev_err(NULL, "    begin if (indio_dev->info->attrs)");
 	if (indio_dev->info->attrs) {
+		dev_err(NULL, "    begin attr = indio_dev->info->attrs->attrs");
 		attr = indio_dev->info->attrs->attrs;
+		dev_err(NULL, "    end attr = indio_dev->info->attrs->attrs");
+
+		dev_err(NULL, "    begin while (*attr++ != NULL)");
 		while (*attr++ != NULL)
 			attrcount_orig++;
+		dev_err(NULL, "    end while (*attr++ != NULL)");
 	}
+	dev_err(NULL, "    begin end (indio_dev->info->attrs)");
 	attrcount = attrcount_orig;
 	/*
 	 * New channel registration method - relies on the fact a group does
