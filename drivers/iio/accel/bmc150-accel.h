@@ -112,7 +112,6 @@ struct bmc150_accel_data {
 
 
 int bmc323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value);
-int bmc323_read_s16(struct bmi323_private_data *bmi323, u8 in_reg, s16* out_value);
 int bmc323_read_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16* out_value);
 int bmi323_chip_check(struct bmi323_private_data *bmi323);
 int bmi323_chip_rst(struct bmi323_private_data *bmi323);

@@ -2035,38 +2035,6 @@ int bmc323_read_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16* out_valu
 }
 EXPORT_SYMBOL_NS_GPL(bmc323_read_u16, IIO_BMC150);
 
-int bmc323_read_s16(struct bmi323_private_data *bmi323, u8 in_reg, s16* out_value) {
-	s32 ret;
-	u8 read_bytes[4];
-
-	if (bmi323->i2c_client != NULL) {
-		ret = i2c_smbus_read_i2c_block_data(bmi323->i2c_client, in_reg, sizeof(read_bytes), &read_bytes[0]);
-		if (ret != 4) {
-			dev_err(bmi323->dev, "error in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x", (int)ret, in_reg);
-			return -2;
-		}
-
-		// LSB = read_bytes[2]
-		// MSB = read_bytes[3]
-		u16 output = 0;
-		u8* o = (u8*)&output;
-		o[0] = read_bytes[2];
-		o[1] = read_bytes[3];
-
-		//output = le16_to_cpu(output); // TODO: how does someone use this stuff? No documentation. IN? OUT?
-		*((u16*)out_value) = output;
-
-		dev_err(bmi323->dev, "success in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x, val = 0x%02x 0x%02x", (int)ret, in_reg, read_bytes[2], read_bytes[3]);
-
-		return 0;
-	} else if (bmi323->spi_client != NULL) {
-		return -4; // TODO: change with 0 once implemented
-	}
-
-	return -3;
-}
-EXPORT_SYMBOL_NS_GPL(bmc323_read_s16, IIO_BMC150);
-
 int bmi323_chip_check(struct bmi323_private_data *bmi323)
 {
 	u16 chip_id;
@@ -2213,7 +2181,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 			switch (chan->type) {
 			case IIO_TEMP:
 				reg = 0x09;
-				ret = bmc323_read_s16(&data->bmi323, reg, &raw_read);
+				ret = bmc323_read_u16(&data->bmi323, reg, &raw_read);
 				if (ret != 0) {
 					//return -EBUSY;
 					return -EINVAL;
@@ -2223,14 +2191,22 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				return IIO_VAL_INT;
 
 			case IIO_ACCEL:
+				/*
 				if (iio_buffer_enabled(indio_dev)) {
 					//return -EBUSY;
 					return -EINVAL;
 				}
+				*/
+
+				ret = iio_device_claim_direct_mode(indio_dev);
+				if (ret != 0) {
+					return ret;
+				}
 
 				reg = 0x03 + (u8)(chan->scan_index);
 
-				ret = bmc323_read_s16(&data->bmi323, reg, &raw_read);
+				ret = bmc323_read_u16(&data->bmi323, reg, &raw_read);
+				iio_device_release_direct_mode(indio_dev); // do not swap with the following if!!!
 				if (ret != 0) {
 					return -EINVAL;
 				}
@@ -2238,17 +2214,26 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				return IIO_VAL_INT;
 
 			case IIO_ANGL_VEL:
+				/*
 				if (iio_buffer_enabled(indio_dev)) {
 					//return -EBUSY;
 					return -EINVAL;
 				}
+				*/
+
+				ret = iio_device_claim_direct_mode(indio_dev);
+				if (ret != 0) {
+					return ret;
+				}
 
 				reg = 0x03 + (u8)(chan->scan_index);
 
-				ret = bmc323_read_s16(&data->bmi323, reg, &raw_read);
+				ret = bmc323_read_u16(&data->bmi323, reg, &raw_read);
+				iio_device_release_direct_mode(indio_dev); // do not swap with the following if!!!
 				if (ret != 0) {
-					return -EINVAL;
+					return ret;
 				}
+
 				*val = cpu_to_le32((int)raw_read);
 				return IIO_VAL_INT;
 			default:
