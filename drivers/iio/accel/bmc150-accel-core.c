@@ -2327,11 +2327,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 	u16 raw_read = 0x8000;
 	u8 reg = 0x00;
 
-	printk(KERN_CRIT "bmc150 bmi323_read_raw\n");
-
 	mutex_lock(&data->bmi323.mutex);
-
-	printk(KERN_CRIT "bmc150 bmi323_read_raw mutex taken\n");
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
@@ -2413,10 +2409,9 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 		printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ\n");
 		switch (chan->type) {
 		case IIO_TEMP:
-				*val = 0;
-				*val2 = 0;
-				mutex_unlock(&data->bmi323.mutex);
-				return IIO_VAL_INT_PLUS_MICRO;
+				printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ/IIO_TEMP: you can see this, but not change this... returning EINVAL for now even in read\n");
+				ret = -EINVAL;
+				goto bmi323_read_raw_error;
 
 			case IIO_ACCEL:
 				ret = bmc323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
@@ -2427,8 +2422,8 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 				for (int s = 0; s < ARRAY_SIZE(bmi323_accel_odr_map); ++s) {
 					if (((le16_to_cpu(raw_read)) & ((u16)0x0FU)) == (bmi323_accel_odr_map[s].hw_val)) {
-						*val = 0;
-						*val2 = 0;
+						*val = bmi323_accel_odr_map[s].val;
+						*val2 = bmi323_accel_odr_map[s].val2;
 
 						mutex_unlock(&data->bmi323.mutex);
 						return IIO_VAL_INT_PLUS_MICRO;
@@ -2448,8 +2443,8 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 				for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
 					if (((le16_to_cpu(raw_read)) & ((u16)0x0FU)) == (bmi323_gyro_odr_map[s].hw_val)) {
-						*val = 0;
-						*val2 = 0;
+						*val = bmi323_gyro_odr_map[s].val;
+						*val2 = bmi323_gyro_odr_map[s].val2;
 
 						mutex_unlock(&data->bmi323.mutex);
 						return IIO_VAL_INT_PLUS_MICRO;
