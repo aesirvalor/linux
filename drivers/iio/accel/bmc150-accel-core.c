@@ -2426,7 +2426,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 
 				for (int s = 0; s < ARRAY_SIZE(bmi323_accel_odr_map); ++s) {
-					if (le16_to_cpu(raw_read) & ((u16)0b0111U) == (bmi323_accel_odr_map[s].hw_val)) {
+					if (((le16_to_cpu(raw_read)) & ((u16)0b0111U)) == (bmi323_accel_odr_map[s].hw_val)) {
 						*val = 0;
 						*val2 = 0;
 
@@ -2447,7 +2447,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 
 				for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
-					if (le16_to_cpu(raw_read) & ((u16)0b0111U) == (bmi323_gyro_odr_map[s].hw_val)) {
+					if (((le16_to_cpu(raw_read)) & ((u16)0b0111U)) == (bmi323_gyro_odr_map[s].hw_val)) {
 						*val = 0;
 						*val2 = 0;
 
@@ -2457,6 +2457,10 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 
 				// didn't find what you are looking for? That's very BAD!
+				ret = -EINVAL;
+				goto bmi323_read_raw_error;
+			
+			default:
 				ret = -EINVAL;
 				goto bmi323_read_raw_error;
 		}
@@ -2731,7 +2735,7 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 
 	if (data->bmi323.i2c_client != NULL) {
 		data->bmi323.dev = &data->bmi323.i2c_client->dev;
-	} else if (&data->bmi323.spi_client != NULL) {
+	} else if (data->bmi323.spi_client != NULL) {
 		data->bmi323.dev = &data->bmi323.spi_client->dev;
 	} else {
 		return -ENODEV;
