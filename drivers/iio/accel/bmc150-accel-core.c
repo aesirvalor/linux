@@ -2645,9 +2645,9 @@ static irqreturn_t iio_bmi323_trigger_h(int irq, void *p)
 
 	printk(KERN_CRIT "bmc150 iio_bmi323_trigger_h\n");
 
-	/*data = kmalloc(indio_dev->scan_bytes, GFP_KERNEL);
+	data = kmalloc(indio_dev->scan_bytes, GFP_KERNEL);
 	if (!data)
-		goto bmi323_irq_done;*/
+		goto bmi323_irq_done;
 
 	/*
 	CHANNEL			scan_index
