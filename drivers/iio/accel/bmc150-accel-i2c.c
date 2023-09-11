@@ -182,25 +182,21 @@ static int bmc150_accel_probe(struct i2c_client *client)
 	enum bmc150_type type = BOSCH_UNKNOWN;
 	bool block_supported = false;
 
-	ret = i2c_smbus_read_i2c_block_data(client, 0x00, 4, &chip_id_first[0]);
+	ret = i2c_smbus_read_i2c_block_data(client, BMC150_BMI323_CHIP_ID_REG, 4, &chip_id_first[0]);
 	if (ret != 4) {
-		dev_err(&client->dev, "error in i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x", (int)ret, 0x00);
+		dev_info(&client->dev, "error checking if the bmc150 is in fact a bmi323: i2c_smbus_read_i2c_block_data = %d: reg = 0x%02x.\n\tIt probably is a bmc150 as correctly reported by the ACPI entry.", (int)ret, 0x00);
 		goto bmi150_old_probe;
 	}
 
-	if (chip_id_first[2] != 0x43) {
-		dev_err(&client->dev, "chip is not a bmi323.");
-	} else {
-		dev_err(&client->dev, "chip is a bmi323!");
-		dev_type = BMI323;
-	}
+	// at this point we have enough data to know what chip we are handling
+	dev_type = (chip_id_first[2] == 0x43) ? BMI323 : dev_type;
 
 	if (dev_type == BMI323) {
-		/*dev_warn*/ dev_err(&client->dev, "bmc323: the bmc150 is for sure a bmc323...\n");
+		dev_warn(&client->dev, "bmc323: what the ACPI table reported as a bmc150 is in fact a bmc323\n");
 
 		struct iio_dev *indio_dev = devm_iio_device_alloc(&client->dev, sizeof(struct bmc150_accel_data));
 		if (!indio_dev) {
-			dev_err(&client->dev, "bmc323: out of memory\n");
+			dev_err(&client->dev, "bmc323 init process failed: out of memory\n");
 
 			return -ENOMEM;
 		}
@@ -219,7 +215,7 @@ static int bmc150_accel_probe(struct i2c_client *client)
 			return ret;
 		}
 
-		/*dev_info*/ dev_err(&client->dev, "bmc323: chip rst success\n");
+		dev_info(&client->dev, "bmc323: chip reset success: starting the iio subsystem binding\n");
 
 		ret = bmi323_iio_init(indio_dev);
 		if (ret != 0) {
@@ -230,7 +226,7 @@ static int bmc150_accel_probe(struct i2c_client *client)
 	}
 	
 bmi150_old_probe:
-	dev_err(&client->dev, "executing the normal procedure for a bmc150...");
+	dev_info(&client->dev, "executing the normal procedure for a bmc150...");
 
 	block_supported =
 		i2c_check_functionality(client->adapter, I2C_FUNC_I2C) ||
