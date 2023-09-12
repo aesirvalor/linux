@@ -2505,8 +2505,8 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						}
 
 						u8* le_raw_read = (u8*)&raw_read;
-						le_raw_read[0] &= (u8)0b10001111U;
-						le_raw_read[0] |= ((u8)bmi323_accel_odr_map[s].hw_val) << (u8)4;
+						le_raw_read[0] &= (u8)0b11110000U;
+						le_raw_read[0] |= ((u8)bmi323_gyro_odr_map[s].hw_val);
 
 						ret = bmc323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, le16_to_cpu(raw_read));
 						if (ret != 0) {
@@ -2529,8 +2529,8 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						}
 
 						u8* le_raw_read = (u8*)&raw_read;
-						le_raw_read[0] &= (u8)0b10001111U;
-						le_raw_read[0] |= ((u8)bmi323_gyro_odr_map[s].hw_val) << (u8)4;
+						le_raw_read[0] &= (u8)0b11110000U;
+						le_raw_read[0] |= ((u8)bmi323_gyro_odr_map[s].hw_val);
 
 						ret = bmc323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, le16_to_cpu(raw_read));
 						if (ret != 0) {
