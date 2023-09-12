@@ -190,149 +190,166 @@ struct bmi323_freq_gyro_info {
 	int val2;
 };
 
+static const int bmi323_sample_freqs[] = {
+	0, 781230,
+	1, 562600,
+	3, 125000,
+	6, 250000,
+	12, 500000,
+	25, 0,
+	50, 0,
+	100, 0,
+	200, 0,
+	400, 0,
+	800, 0,
+	1600, 0,
+	3200, 0,
+	6400, 0,
+};
+
 const struct bmi323_freq_accel_info bmi323_accel_odr_map[] = {
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_0_78123_VAL,
-		.val = 0,
-		.val2 = 781230,
+		.val = bmi323_sample_freqs[0],
+		.val2 = bmi323_sample_freqs[1],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_1_5625_VAL,
-		.val = 1,
-		.val2 = 562600,
+		.val = bmi323_sample_freqs[2],
+		.val2 = bmi323_sample_freqs[3],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_3_125_VAL,
-		.val = 3,
-		.val2 = 125000,
+		.val = bmi323_sample_freqs[4],
+		.val2 = bmi323_sample_freqs[5],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_6_25_VAL,
-		.val = 6,
-		.val2 = 250000,
+		.val = bmi323_sample_freqs[6],
+		.val2 = bmi323_sample_freqs[7],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_12_5_VAL,
-		.val = 12,
-		.val2 = 500000,
+		.val = bmi323_sample_freqs[8],
+		.val2 = bmi323_sample_freqs[9],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_25_VAL,
-		.val = 25,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[10],
+		.val2 = bmi323_sample_freqs[11],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_50_VAL,
-		.val = 50,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[12],
+		.val2 = bmi323_sample_freqs[13],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_100_VAL,
-		.val = 100,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[14],
+		.val2 = bmi323_sample_freqs[15],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_200_VAL,
-		.val = 200,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[16],
+		.val2 = bmi323_sample_freqs[17],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_400_VAL,
-		.val = 400,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[18],
+		.val2 = bmi323_sample_freqs[19],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_800_VAL,
-		.val = 800,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[20],
+		.val2 = bmi323_sample_freqs[21],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_1600_VAL,
-		.val = 1600,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[22],
+		.val2 = bmi323_sample_freqs[23],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_3200_VAL,
-		.val = 3200,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[24],
+		.val2 = bmi323_sample_freqs[25],
 	},
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_6400_VAL,
-		.val = 6400,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[26],
+		.val2 = bmi323_sample_freqs[27],
 	},
 };
 
 const struct bmi323_freq_gyro_info bmi323_gyro_odr_map[] = {
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_0_78123_VAL,
-		.val = 0,
-		.val2 = 781230,
+		.val = bmi323_sample_freqs[0],
+		.val2 = bmi323_sample_freqs[1],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_1_5625_VAL,
-		.val = 1,
-		.val2 = 562600,
+		.val = bmi323_sample_freqs[2],
+		.val2 = bmi323_sample_freqs[3],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_3_125_VAL,
-		.val = 3,
-		.val2 = 125000,
+		.val = bmi323_sample_freqs[4],
+		.val2 = bmi323_sample_freqs[5],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_6_25_VAL,
-		.val = 6,
-		.val2 = 250000,
+		.val = bmi323_sample_freqs[6],
+		.val2 = bmi323_sample_freqs[7],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_12_5_VAL,
-		.val = 12,
-		.val2 = 500000,
+		.val = bmi323_sample_freqs[8],
+		.val2 = bmi323_sample_freqs[9],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_25_VAL,
-		.val = 25,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[10],
+		.val2 = bmi323_sample_freqs[11],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_50_VAL,
-		.val = 50,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[12],
+		.val2 = bmi323_sample_freqs[13],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_100_VAL,
-		.val = 100,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[14],
+		.val2 = bmi323_sample_freqs[15],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_200_VAL,
-		.val = 200,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[16],
+		.val2 = bmi323_sample_freqs[17],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_400_VAL,
-		.val = 400,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[18],
+		.val2 = bmi323_sample_freqs[19],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_800_VAL,
-		.val = 800,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[20],
+		.val2 = bmi323_sample_freqs[21],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_1600_VAL,
-		.val = 1600,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[22],
+		.val2 = bmi323_sample_freqs[23],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_3200_VAL,
-		.val = 3200,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[24],
+		.val2 = bmi323_sample_freqs[25],
 	},
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_6400_VAL,
-		.val = 6400,
-		.val2 = 0,
+		.val = bmi323_sample_freqs[26],
+		.val2 = bmi323_sample_freqs[27],
 	},
 };
 
@@ -2577,6 +2594,31 @@ bmi323_write_raw_error:
 	return ret;
 }
 
+static int bmi323_read_avail(struct iio_dev *indio_dev,
+			     struct iio_chan_spec const *chan,
+			     const int **vals, int *type, int *length,
+			     long mask)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	switch (mask) {
+	/*
+	case IIO_CHAN_INFO_SCALE:
+		*vals = (const int *)data->chip_info->scale_table;
+		*length = 8;
+		*type = IIO_VAL_INT_PLUS_MICRO;
+		return IIO_AVAIL_LIST;
+	*/
+	case IIO_CHAN_INFO_SAMP_FREQ:
+		*type = IIO_VAL_INT_PLUS_MICRO;
+		*vals = bmi323_sample_freqs;
+		*length = ARRAY_SIZE(bmi323_sample_freqs);
+		return IIO_AVAIL_LIST;
+	default:
+		return -EINVAL;
+	}
+}
+
 static int bmi323_read_event(struct iio_dev *indio_dev,
 				   const struct iio_chan_spec *chan,
 				   enum iio_event_type type,
@@ -2682,6 +2724,7 @@ static const struct iio_info bmi323_accel_info = {
 	//.attrs			= &bmi323_accel_attrs_group, // this gets accessed in iio_device_register_sysfs
 	.read_raw		= bmi323_read_raw,
 	.write_raw		= bmi323_write_raw,
+	.read_avail		= bmi323_read_avail,
 	//.read_event_value	= bmi323_read_event,
 	//.write_event_value	= bmi323_write_event,
 	//.write_event_config	= bmi323_write_event_config,
