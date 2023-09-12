@@ -175,13 +175,11 @@ struct bmc150_scale_info {
 	u8 reg_range;
 };
 
-struct bmi323_scale_accel_info {
+static const struct bmi323_scale_accel_info {
 	u16 hw_val;
 	int val;
 	int val2;
-};
-
-static const struct bmi323_scale_accel_info bmi323_accel_scale_map[] = {
+} bmi323_accel_scale_map[] = {
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_2_VAL << (u16)4,
 		.val = 1,
@@ -204,15 +202,14 @@ static const struct bmi323_scale_accel_info bmi323_accel_scale_map[] = {
 	},
 };
 
-struct bmi323_scale_gyro_info {
-	u16 hw_val;
-	int val;
-	int val2;
-};
 
 // TODO: REVIEW GYRO SCALE
 // val and val2 taken from datasheet, are expressed in LSB/°/s
-static const struct bmi323_scale_gyro_info bmi323_gyro_scale_map[] = {
+static const struct bmi323_scale_gyro_info {
+	u16 hw_val;
+	int val;
+	int val2;
+} bmi323_gyro_scale_map[] = {
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
 		.val = 262,
@@ -240,51 +237,11 @@ static const struct bmi323_scale_gyro_info bmi323_gyro_scale_map[] = {
 	},
 };
 
-struct bmi323_freq_accel_info {
+static const struct bmi323_freq_accel_info {
 	u16 hw_val;
 	int val;
 	int val2;
-};
-
-struct bmi323_freq_gyro_info {
-	u16 hw_val;
-	int val;
-	int val2;
-};
-
-static const int bmi323_accel_scales[] = {
-	1, 9160156,
-	3, 8320312,
-	7, 6640624,
-	15, 3281248,
-};
-
-// TODO: REVIEW GYRO SCALE
-static const int bmi323_gyro_scales[] = {
-	262, 144,
-	3, 8320312,
-	7, 6640624,
-	15, 3281248,
-};
-
-static const int bmi323_sample_freqs[] = {
-	0, 781230,
-	1, 562600,
-	3, 125000,
-	6, 250000,
-	12, 500000,
-	25, 0,
-	50, 0,
-	100, 0,
-	200, 0,
-	400, 0,
-	800, 0,
-	1600, 0,
-	3200, 0,
-	6400, 0,
-};
-
-const struct bmi323_freq_accel_info bmi323_accel_odr_map[] = {
+} bmi323_accel_odr_map[] = {
 	{
 		.hw_val = BMC150_BMI323_ACCEL_ODR_0_78123_VAL,
 		.val = 0,
@@ -357,7 +314,11 @@ const struct bmi323_freq_accel_info bmi323_accel_odr_map[] = {
 	},
 };
 
-const struct bmi323_freq_gyro_info bmi323_gyro_odr_map[] = {
+static const struct bmi323_freq_gyro_info {
+	u16 hw_val;
+	int val;
+	int val2;
+} bmi323_gyro_odr_map[] = {
 	{
 		.hw_val = BMC150_BMI323_GYRO_ODR_0_78123_VAL,
 		.val = 0,
@@ -428,6 +389,38 @@ const struct bmi323_freq_gyro_info bmi323_gyro_odr_map[] = {
 		.val = 6400,
 		.val2 = 0,
 	},
+};
+
+static const int bmi323_accel_scales[] = {
+	1, 9160156,
+	3, 8320312,
+	7, 6640624,
+	15, 3281248,
+};
+
+// TODO: REVIEW GYRO SCALE
+static const int bmi323_gyro_scales[] = {
+	262, 144,
+	3, 8320312,
+	7, 6640624,
+	15, 3281248,
+};
+
+static const int bmi323_sample_freqs[] = {
+	0, 781230,
+	1, 562600,
+	3, 125000,
+	6, 250000,
+	12, 500000,
+	25, 0,
+	50, 0,
+	100, 0,
+	200, 0,
+	400, 0,
+	800, 0,
+	1600, 0,
+	3200, 0,
+	6400, 0,
 };
 
 struct bmc150_accel_chip_info {
