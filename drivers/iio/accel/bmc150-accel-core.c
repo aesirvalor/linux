@@ -210,6 +210,36 @@ struct bmi323_scale_gyro_info {
 	int val2;
 };
 
+// TODO: REVIEW GYRO SCALE
+// val and val2 taken from datasheet, are expressed in LSB/°/s
+static const struct bmi323_scale_gyro_info bmi323_accel_gyro_map[] = {
+	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
+		.val = 262,
+		.val2 = 144,
+	},
+	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_250_VAL << (u16)4,
+		.val = 131,
+		.val2 = 072,
+	},
+	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_500_VAL << (u16)4,
+		.val = 65,
+		.val2 = 536,
+	},
+	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_1000_VAL << (u16)4,
+		.val = 32,
+		.val2 = 768,
+	},
+	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4,
+		.val = 16,
+		.val2 = 384,
+	},
+};
+
 struct bmi323_freq_accel_info {
 	u16 hw_val;
 	int val;
@@ -224,6 +254,14 @@ struct bmi323_freq_gyro_info {
 
 static const int bmi323_accel_scales[] = {
 	1, 9160156,
+	3, 8320312,
+	7, 6640624,
+	15, 3281248,
+};
+
+// TODO: REVIEW GYRO SCALE
+static const int bmi323_gyro_scales[] = {
+	262, 144,
 	3, 8320312,
 	7, 6640624,
 	15, 3281248,
@@ -1427,10 +1465,10 @@ static const struct iio_event_spec bmc150_accel_event = {
 	.modified = 1,							\
 	.channel2 = IIO_MOD_##_axis,					\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
-	.info_mask_shared_by_type = /*BIT(IIO_CHAN_INFO_SCALE) |*/		\
+	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |		\
 				BIT(IIO_CHAN_INFO_SAMP_FREQ),		\
 	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SAMP_FREQ) \
-				/*| BIT(IIO_CHAN_INFO_SCALE)*/, \
+				| BIT(IIO_CHAN_INFO_SCALE), \
 	.scan_index = BMI323_GYRO_AXIS_##_axis,					\
 	.scan_type = {							\
 		.sign = 's',						\
@@ -2387,7 +2425,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 
 				ret = bmc323_read_u16(&data->bmi323, BMC150_BMI323_TEMPERATURE_DATA_REG, &raw_read);
-				iio_device_release_direct_mode(indio_dev); // do not swap with the following if!!!
+				iio_device_release_direct_mode(indio_dev);
 				if (ret != 0) {
 					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_TEMP bmc323_read_u16 returned %d\n", ret);
 					goto bmi323_read_raw_error;
@@ -2444,7 +2482,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 			goto bmi323_read_raw_error;
 		}
 	case IIO_CHAN_INFO_SCALE:
-		// TODO: SCEMOOOOOOOOOOOOOOO
 		switch (chan->type) {
 			case IIO_ACCEL:
 				{
@@ -2465,31 +2502,27 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 						}
 					}
 
-					// didn't find what you are looking for? That's very BAD!
 					ret = -EINVAL;
 					goto bmi323_read_raw_error;
 				}
 			case IIO_ANGL_VEL:
 				{
-					/*
 					ret = bmc323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
 					if (ret != 0) {
 						goto bmi323_read_raw_error;
 					}
 
 					u8* le_raw_read = (u8*)&raw_read;
-					for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
-						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_gyro_odr_map[s].hw_val)) {
-							*val = bmi323_gyro_odr_map[s].val;
-							*val2 = bmi323_gyro_odr_map[s].val2;
+					for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_scale_map); ++s) {
+						if (((le_raw_read[0]) & ((u16)0b01110000U)) == (bmi323_gyro_scale_map[s].hw_val)) {
+							*val = bmi323_gyro_scale_map[s].val;
+							*val2 = bmi323_gyro_scale_map[s].val2;
 
 							mutex_unlock(&data->bmi323.mutex);
-							return IIO_VAL_INT_PLUS_MICRO;
+							return IIO_VAL_INT_PLUS_NANO;
 						}
 					}
-					*/
 
-					// didn't find what you are looking for? That's very BAD!
 					ret = -EINVAL;
 					goto bmi323_read_raw_error;
 				}
@@ -2504,7 +2537,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				{
 					ret = bmc323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
 					if (ret != 0) {
-						printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ/IIO_ACCEL bmc323_read_u16 returned %d\n", ret);
 						goto bmi323_read_raw_error;
 					}
 
@@ -2519,7 +2551,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 						}
 					}
 
-					// didn't find what you are looking for? That's very BAD!
 					ret = -EINVAL;
 					goto bmi323_read_raw_error;
 				}
@@ -2541,7 +2572,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 						}
 					}
 
-					// didn't find what you are looking for? That's very BAD!
 					ret = -EINVAL;
 					goto bmi323_read_raw_error;
 				}
@@ -2549,14 +2579,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				ret = -EINVAL;
 				goto bmi323_read_raw_error;
 		}
-
-		goto bmi323_read_raw_error;
-		/*
-		mutex_lock(&data->mutex);
-		ret = bmc150_accel_get_bw(data, val, val2);
-		mutex_unlock(&data->mutex);
-		return ret;
-		*/
 	default:
 		ret = -EINVAL;
 		goto bmi323_read_raw_error;
@@ -2664,19 +2686,16 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
 			case IIO_ANGL_VEL:
-				/*
-				// OOOOOHHHHHHHHHHHHHH SONO QUIIIIIIIIIII
-				
-				for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
-					if ((bmi323_gyro_odr_map[s].val == val) && (bmi323_gyro_odr_map[s].val2 == val2)) {
+				for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_scale_map); ++s) {
+					if ((bmi323_gyro_scale_map[s].val == val) && (bmi323_gyro_scale_map[s].val2 == val2)) {
 						ret = bmc323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
 						if (ret != 0) {
 							goto bmi323_write_raw_error;
 						}
 
 						u8* le_raw_read = (u8*)&raw_read;
-						le_raw_read[0] &= (u8)0b11110000U;
-						le_raw_read[0] |= ((u8)bmi323_gyro_odr_map[s].hw_val);
+						le_raw_read[0] &= (u8)0b10001111U;
+						le_raw_read[0] |= ((u8)bmi323_gyro_scale_map[s].hw_val);
 
 
 						ret = bmc323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, le16_to_cpu(raw_read));
@@ -2688,7 +2707,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						return 0;
 					}
 				}
-				*/
+				
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
 
