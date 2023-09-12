@@ -1351,6 +1351,8 @@ static const struct iio_event_spec bmc150_accel_event = {
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
 	.info_mask_shared_by_type = /*BIT(IIO_CHAN_INFO_SCALE) |*/		\
 				BIT(IIO_CHAN_INFO_SAMP_FREQ),		\
+	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SAMP_FREQ) \
+				/*| BIT(IIO_CHAN_INFO_SCALE)*/, \
 	.scan_index = BMI323_ACCEL_AXIS_##_axis,					\
 	.scan_type = {							\
 		.sign = 's',						\
@@ -1371,6 +1373,8 @@ static const struct iio_event_spec bmc150_accel_event = {
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
 	.info_mask_shared_by_type = /*BIT(IIO_CHAN_INFO_SCALE) |*/		\
 				BIT(IIO_CHAN_INFO_SAMP_FREQ),		\
+	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SAMP_FREQ) \
+				/*| BIT(IIO_CHAN_INFO_SCALE)*/, \
 	.scan_index = BMI323_GYRO_AXIS_##_axis,					\
 	.scan_type = {							\
 		.sign = 's',						\
