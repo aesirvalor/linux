@@ -2426,7 +2426,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 					}
 
 					u8* le_raw_read = (u8*)&raw_read;
-					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ/IIO_ACCEL analyzing 0x%04x => 0x%02x\n", raw_read, le_raw_read[0]);
 					for (int s = 0; s < ARRAY_SIZE(bmi323_accel_odr_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_accel_odr_map[s].hw_val)) {
 							*val = bmi323_accel_odr_map[s].val;
@@ -2443,14 +2442,13 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 			case IIO_ANGL_VEL:
 				{
-					ret = bmc323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
+					ret = bmc323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
 					if (ret != 0) {
-						printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ/IIO_ACCEL bmc323_read_u16 returned %d\n", ret);
+						printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ/IIO_ANGL_VEL bmc323_read_u16 returned %d\n", ret);
 						goto bmi323_read_raw_error;
 					}
 
 					u8* le_raw_read = (u8*)&raw_read;
-					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SAMP_FREQ/IIO_ACCEL analyzing 0x%04x => 0x%02x\n", raw_read, le_raw_read[0]);
 					for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_gyro_odr_map[s].hw_val)) {
 							*val = bmi323_gyro_odr_map[s].val;
