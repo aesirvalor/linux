@@ -212,7 +212,7 @@ struct bmi323_scale_gyro_info {
 
 // TODO: REVIEW GYRO SCALE
 // val and val2 taken from datasheet, are expressed in LSB/°/s
-static const struct bmi323_scale_gyro_info bmi323_accel_gyro_map[] = {
+static const struct bmi323_scale_gyro_info bmi323_gyro_scale_map[] = {
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
 		.val = 262,
