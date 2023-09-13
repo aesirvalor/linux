@@ -2087,6 +2087,7 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
 	data = iio_priv(indio_dev);
 	dev_set_drvdata(dev, indio_dev);
 
+	data->dev_type = BMC150;
 	data->regmap = regmap;
 	data->type = type;
 	

@@ -203,6 +203,7 @@ static int bmc150_accel_probe(struct i2c_client *client)
 
 		dev_set_drvdata(&client->dev, indio_dev);
 		struct bmc150_accel_data *data = iio_priv(indio_dev);
+		data->dev_type = dev_type;
 
 		struct bmi323_private_data* bmi323_data = &data->bmi323;
 		bmi323_data->i2c_client = client;
