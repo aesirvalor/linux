@@ -3001,6 +3001,8 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 
 	int ret = 0;
 
+	pm_runtime_init(data->bmi323.dev);
+
 	mutex_init(&data->bmi323.mutex);
 
 	// now set normal mode...
@@ -3062,18 +3064,12 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 		dev_err(data->bmi323.dev, "IRQ pin NOT connected: %d :(", data->bmi323.irq);
 	}
 
-	if (data->bmi323.dev == NULL) {
-		dev_err(data->bmi323.dev, "bmi323 data->bmi323.dev is NULL\n");
-	}
-
-	dev_err(data->bmi323.dev, "bmi323 pm_runtime_set_active\n");
 	ret = pm_runtime_set_active(data->bmi323.dev);
 	if (ret) {
-		dev_err(data->bmi323.dev, "bmi323 unable to pm_runtime_set_active: %d\n", ret);
+		dev_err(data->bmi323.dev, "bmi323 unable to initialize runtim PD: pm_runtime_set_active returned %d\n", ret);
 		goto bmi323_iio_init_err_buffer_cleanup;
 	}
 
-	dev_err(data->bmi323.dev, "bmi323 pm_runtime_enable\n");
 	pm_runtime_enable(data->bmi323.dev);dev_err(data->bmi323.dev, "bmi323 pm_runtime_set_autosuspend_delay\n");
 	pm_runtime_set_autosuspend_delay(data->bmi323.dev,
 					 BMC150_BMI323_AUTO_SUSPEND_DELAY_MS);
