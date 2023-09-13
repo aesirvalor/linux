@@ -66,6 +66,7 @@ enum bmc150_accel_trigger_id {
 #define BMI323_FLAGS_RESET_FAILED 0x00000001U
 
 struct bmi323_private_data {
+	struct regulator_bulk_data regulators[2];
 	struct i2c_client* i2c_client;
 	struct spi_device* spi_client;
 	struct device* dev; // pointer at i2c_client->dev or spi_client->dev
@@ -105,6 +106,8 @@ struct bmc150_accel_data {
 	enum bmc150_device_type dev_type;
 	struct bmi323_private_data bmi323;
 	};
+
+#define BMC150_BMI323_AUTO_SUSPEND_DELAY_MS 2000
 
 #define BMC150_BMI323_CHIP_ID_REG 0x00
 #define BMC150_BMI323_SOFT_RESET_REG 0x7E
@@ -159,7 +162,7 @@ struct bmc150_accel_data {
 #define BMC150_BMI323_GYRO_RANGE_1000_VAL		0x0003 // +/-1000°/s, 32.8 LSB/°/s
 #define BMC150_BMI323_GYRO_RANGE_2000_VAL		0x0004 // +/-2000°/s, 16.4 LSB/°/s
 
-int bmc323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value);
+int bmi323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value);
 
 /**
  * This function performs a read of "good" values from the bmi323 discarding what
@@ -176,7 +179,7 @@ int bmc323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value
  *
  * WARNING: this function does not lock any mutex and synchronization MUST be performed by the caller
  */
-int bmc323_read_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16* out_value);
+int bmi323_read_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16* out_value);
 
 int bmi323_chip_check(struct bmi323_private_data *bmi323);
 int bmi323_chip_rst(struct bmi323_private_data *bmi323);
@@ -189,6 +192,8 @@ int bmi323_chip_rst(struct bmi323_private_data *bmi323);
  * @param indio_dev the industrual io device already allocated but not yet registered
  */
 int bmi323_iio_init(struct iio_dev *indio_dev);
+
+void bmi323_iio_deinit(struct iio_dev *indio_dev);
 
 int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
 			    enum bmc150_type type, const char *name,

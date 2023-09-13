@@ -209,6 +209,29 @@ static int bmc150_accel_probe(struct i2c_client *client)
 		bmi323_data->spi_client = NULL;
 		bmi323_data->irq = client->irq;
 
+		/*
+		 * VDD   is the analog and digital domain voltage supply
+		 * VDDIO is the digital I/O voltage supply
+		 */
+		bmi323_data->regulators[0].supply = "vdd";
+		bmi323_data->regulators[1].supply = "vddio";
+		ret = devm_regulator_bulk_get(&client->dev,
+						ARRAY_SIZE(bmi323_data->regulators),
+						bmi323_data->regulators);
+		if (ret) {
+			
+			return dev_err_probe(&client->dev, ret, "failed to get regulators\n");
+		}
+
+		ret = regulator_bulk_enable(ARRAY_SIZE(bmi323_data->regulators),
+						bmi323_data->regulators);
+		if (ret) {
+			iio_device_free(indio_dev);
+
+			dev_err(&client->dev, "failed to enable regulators: %d\n", ret);
+			return ret;
+		}
+
 		ret = bmi323_chip_rst(bmi323_data);
 		if (ret != 0) {
 			dev_err(&client->dev, "bmc323: error issuing the chip reset: %d\n", ret);
@@ -216,11 +239,13 @@ static int bmc150_accel_probe(struct i2c_client *client)
 		}
 
 		dev_info(&client->dev, "bmc323: chip reset success: starting the iio subsystem binding\n");
-
+		
 		ret = bmi323_iio_init(indio_dev);
 		if (ret != 0) {
 			return ret;
 		}
+
+		
 
 		return 0;
 	}
@@ -266,15 +291,7 @@ static void bmc150_accel_remove(struct i2c_client *client)
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
 
 	if (data->dev_type == BMI323) {
-		/*dev_info*/ dev_err(&client->dev, "bmc323 removing driver...\n");
-
-		iio_device_unregister(indio_dev);
-
-		/*dev_info*/ dev_err(&client->dev, "bmc323 deallocating driver storage...\n");
-
-		iio_device_free(indio_dev);
-
-		/*dev_info*/ dev_err(&client->dev, "bmc323 removal done.\n");
+		bmi323_iio_deinit(indio_dev);
 
 		// TODO: create and call functions for bmi323
 		return;
