@@ -292,8 +292,7 @@ static void bmc150_accel_remove(struct i2c_client *client)
 
 	if (data->dev_type == BMI323) {
 		bmi323_iio_deinit(indio_dev);
-
-		// TODO: create and call functions for bmi323
+		
 		return;
 	}
 
