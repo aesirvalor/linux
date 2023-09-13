@@ -2269,12 +2269,8 @@ int bmi323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value
 	if (bmi323->i2c_client != NULL) {
 		ret = i2c_smbus_write_i2c_block_data(bmi323->i2c_client, in_reg, sizeof(in_value), (u8*)(&in_value));
 		if (ret != 0) {
-			dev_err(&bmi323->i2c_client->dev, "error in i2c_smbus_write_i2c_block_data = %d: reg = 0x%02x, val = 0x%02x 0x%02x", (int)ret, in_reg, ((u8*)&in_value)[0], ((u8*)&in_value)[1]);
-
 			return -2;
 		}
-
-		dev_err(&bmi323->i2c_client->dev, "success in i2c_smbus_write_i2c_block_data = %d: reg = 0x%02x, val = 0x%02x 0x%02x", (int)ret, in_reg, ((u8*)&in_value)[0], ((u8*)&in_value)[1]);
 
 		return 0;
 	} else if (bmi323->spi_client != NULL) {
@@ -3106,17 +3102,13 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	// now set the (default) normal mode...
 	// normal mode: 0x4000
 	// no averaging: 0x0000
-	// range 8g: 0x0020
-	// ODR 50Hz: 0x0007
-	data->bmi323.acc_conf_reg_value = 0x4027;
+	data->bmi323.acc_conf_reg_value = cpu_to_le16(0x4000 | ((u16)BMC150_BMI323_ACCEL_RANGE_2_VAL << (u16)4U) | ((u16)BMC150_BMI323_ACCEL_ODR_100_VAL));
 	
 	// now set the (default) normal mode...
 	// normal mode: 0x4000
 	// no averaging: 0x0000
 	// filtering to ODR/2: 0x0000
-	// range: 2kdps: 0x0040
-	// ODR 800Hz not true :)	
-	data->bmi323.gyr_conf_reg_value = 0x4027;
+	data->bmi323.gyr_conf_reg_value = cpu_to_le16(0x4000 | ((u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4U) | ((u16)BMC150_BMI323_ACCEL_ODR_100_VAL));
 
 	ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, data->bmi323.acc_conf_reg_value);
 	if (ret != 0) {
@@ -3273,21 +3265,31 @@ static int bmc150_accel_resume(struct device *dev)
 	if (data->dev_type == BMI323) {
 		dev_err(dev, "bmi323 resuming driver...");
 
-		if ((data->bmi323.flags & BMI323_FLAGS_RESET_FAILED) != 0) {
-			dev_err(dev, "bmi323 was left in a dirty state: resetting the chip now...");
+		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
+		mutex_lock(&data->bmi323.mutex);
 
-			ret = bmi323_chip_rst(&data->bmi323);
-			if (ret != 0) {
-				dev_err(dev, "bmi323 error in resetting the chip on resume. All hope is gone.");
-
-				return ret;
-			}
-
-			data->bmi323.flags &= ~BMI323_FLAGS_RESET_FAILED;
+		// this was done already in runtime_sleep function.
+		//ret = bmi323_chip_rst(&data->bmi323);
+		
+		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
+		if (ret != 0) {
+			goto bmi323_bmc150_accel_suspend_terminate;
 		}
 
-		// TODO: set the correct power mode (and re-enable triggers?)
+		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, data->bmi323.acc_conf_reg_value);
+		if (ret != 0) {
+			goto bmi323_bmc150_accel_suspend_terminate;
+		}
+
+bmi323_bmc150_accel_suspend_terminate:
+		mutex_unlock(&data->bmi323.mutex);
+		if (ret != 0) {
+			return -EAGAIN;
+		}
 		
+		// datasheet say "Start-up time": suspend to high performance mode is typecally 30ms, let's sleep a bit longer to revent issues...
+		msleep_interruptible(32);
+
 		return 0;
 	}
 
@@ -3312,6 +3314,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 	int ret = 0;
 
 	if (data->dev_type == BMI323) {
+		dev_err(dev, "bmi323 suspending runtime...");
 		
 		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
 		mutex_lock(&data->bmi323.mutex);
@@ -3351,6 +3354,8 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 	int sleep_val;
 
 	if (data->dev_type == BMI323) {
+		dev_err(dev, "bmi323 resuming runtime...");
+
 		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
 		mutex_lock(&data->bmi323.mutex);
 
