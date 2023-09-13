@@ -3203,27 +3203,33 @@ static int bmc150_accel_resume(struct device *dev)
 #ifdef CONFIG_PM
 static int bmc150_accel_runtime_suspend(struct device *dev)
 {
-	dev_err(dev, "bmc150_accel_runtime_suspend entered...");
-
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	if (indio_dev == NULL) {
-		dev_err(dev, "bmc150_accel_runtime_suspend indio_dev is NULL. Fuck!");
-	}
-
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
-	if (data == NULL) {
-		dev_err(dev, "bmc150_accel_runtime_suspend data is NULL. Fuck!");
-	}
 
-	int ret;
-
-	dev_err(dev, "bmc150_accel_runtime_suspend continue...");
+	int ret = 0;
 
 	if (data->dev_type == BMI323) {
 		
-		dev_err(dev, "bmc150_accel_runtime_suspend continue as bmi323...");
+		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
+		mutex_lock(&data->bmi323.mutex);
 		
-		// TODO: do something here
+		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &data->bmi323.gyr_conf_reg_value);
+		if (ret != 0) {
+			goto bmi323_bmc150_accel_runtime_suspend_terminate;
+		}
+
+		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &data->bmi323.acc_conf_reg_value);
+		if (ret != 0) {
+			goto bmi323_bmc150_accel_runtime_suspend_terminate;
+		}
+
+		ret = bmi323_chip_rst(&data->bmi323);
+bmi323_bmc150_accel_runtime_suspend_terminate:
+		mutex_unlock(&data->bmi323.mutex);
+		if (ret != 0) {
+			return -EAGAIN;
+		}
+		
 		return 0;
 	}
 
@@ -3242,7 +3248,31 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 	int sleep_val;
 
 	if (data->dev_type == BMI323) {
-		// TODO: do something here
+		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
+		mutex_lock(&data->bmi323.mutex);
+
+		// this was done already in runtime_sleep function.
+		//ret = bmi323_chip_rst(&data->bmi323);
+		
+		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
+		if (ret != 0) {
+			goto bmi323_bmc150_accel_runtime_suspend_terminate;
+		}
+
+		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, data->bmi323.acc_conf_reg_value);
+		if (ret != 0) {
+			goto bmi323_bmc150_accel_runtime_suspend_terminate;
+		}
+
+bmi323_bmc150_accel_runtime_suspend_terminate:
+		mutex_unlock(&data->bmi323.mutex);
+		if (ret != 0) {
+			return -EAGAIN;
+		}
+		
+		// datasheet say "Start-up time": suspend to high performance mode is typecally 30ms, let's sleep a bit longer to revent issues...
+		msleep_interruptible(32);
+
 		return 0;
 	}
 

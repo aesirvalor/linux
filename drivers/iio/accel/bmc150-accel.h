@@ -72,7 +72,9 @@ struct bmi323_private_data {
 	struct device* dev; // pointer at i2c_client->dev or spi_client->dev
 	struct mutex mutex;
 	int irq;
-	uint32_t flags;
+	u32 flags;
+	u16 acc_conf_reg_value;
+	u16 gyr_conf_reg_value;
 };
 
 struct bmc150_accel_data {
