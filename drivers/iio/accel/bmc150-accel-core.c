@@ -216,8 +216,6 @@ case IIO_TEMP:
 
 */
 
-// TODO: REVIEW GYRO SCALE
-// val and val2 taken from datasheet, are expressed in LSB/°/s
 static const struct bmi323_scale_gyro_info {
 	u16 hw_val;
 	int val;
@@ -225,28 +223,28 @@ static const struct bmi323_scale_gyro_info {
 } bmi323_gyro_scale_map[] = {
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
-		.val = 262,
-		.val2 = 144,
+		.val = 0,
+		.val2 = 66,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_250_VAL << (u16)4,
-		.val = 131,
-		.val2 = 072,
+		.val = 0,
+		.val2 = 133,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_500_VAL << (u16)4,
-		.val = 65,
-		.val2 = 536,
+		.val = 0,
+		.val2 = 266,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_1000_VAL << (u16)4,
-		.val = 32,
-		.val2 = 768,
+		.val = 0,
+		.val2 = 532,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4,
-		.val = 16,
-		.val2 = 384,
+		.val = 0,
+		.val2 = 1065,
 	},
 };
 
@@ -414,10 +412,11 @@ static const int bmi323_accel_scales[] = {
 
 // TODO: REVIEW GYRO SCALE
 static const int bmi323_gyro_scales[] = {
-	262, 144,
-	3, 8320312,
-	7, 6640624,
-	15, 3281248,
+	0, 66,
+	0, 133,
+	0, 266,
+	0, 532,
+	0, 1065,
 };
 
 static const int bmi323_sample_freqs[] = {
@@ -2533,7 +2532,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							*val2 = bmi323_gyro_scale_map[s].val2;
 
 							mutex_unlock(&data->bmi323.mutex);
-							return IIO_VAL_INT_PLUS_NANO;
+							return IIO_VAL_INT_PLUS_MICRO;
 						}
 					}
 
@@ -2711,7 +2710,6 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						le_raw_read[0] &= (u8)0b10001111U;
 						le_raw_read[0] |= ((u8)bmi323_gyro_scale_map[s].hw_val);
 
-
 						ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, le16_to_cpu(raw_read));
 						if (ret != 0) {
 							goto bmi323_write_raw_error;
@@ -2756,17 +2754,14 @@ static int bmi323_read_avail(struct iio_dev *indio_dev,
 			*vals = bmi323_accel_scales;
 			*length = ARRAY_SIZE(bmi323_accel_scales);
 			return IIO_AVAIL_LIST;
-		
+		case IIO_ANGLEVEL:
+			*type = IIO_VAL_INT_PLUS_MICRO;
+			*vals = bmi323_gyro_scales;
+			*length = ARRAY_SIZE(bmi323_gyro_scales);
+			return IIO_AVAIL_LIST;
 		default:
 			return -EINVAL;
 		}
-		
-	/*
-		*vals = (const int *)data->chip_info->scale_table;
-		*length = 8;
-		*type = IIO_VAL_INT_PLUS_MICRO;
-		return IIO_AVAIL_LIST;
-	*/
 	case IIO_CHAN_INFO_SAMP_FREQ:
 		*type = IIO_VAL_INT_PLUS_MICRO;
 		*vals = bmi323_sample_freqs;
