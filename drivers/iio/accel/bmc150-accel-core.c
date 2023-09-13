@@ -3045,12 +3045,15 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	}
 	*/
 
+	// TODO: register triggest BEFORE buffer setup so that they are cleared on emergence exit by bmi323_iio_init_err_trigger_unregister
+
+
 	ret = iio_triggered_buffer_setup(indio_dev, NULL,
 					  iio_bmi323_trigger_h,
 					  &bmi323_buffer_ops);
 	if (ret < 0) {
 		dev_err(data->bmi323.dev, "Failed: iio triggered buffer setup\n");
-		return -500;
+		goto bmi323_iio_init_err_trigger_unregister;
 	}
 
 	if (data->bmi323.irq > 0) {
@@ -3059,14 +3062,18 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 		dev_err(data->bmi323.dev, "IRQ pin NOT connected: %d :(", data->bmi323.irq);
 	}
 
+	dev_err(data->bmi323.dev, "bmi323 pm_runtime_set_active\n");
 	ret = pm_runtime_set_active(data->bmi323.dev);
 	if (ret) {
+		dev_err(data->bmi323.dev, "bmi323 unable to pm_runtime_set_active: %d\n", ret);
 		goto bmi323_iio_init_err_buffer_cleanup;
 	}
 
-	pm_runtime_enable(data->bmi323.dev);
+	dev_err(data->bmi323.dev, "bmi323 pm_runtime_enable\n");
+	pm_runtime_enable(data->bmi323.dev);dev_err(data->bmi323.dev, "bmi323 pm_runtime_set_autosuspend_delay\n");
 	pm_runtime_set_autosuspend_delay(data->bmi323.dev,
 					 BMC150_BMI323_AUTO_SUSPEND_DELAY_MS);
+	dev_err(data->bmi323.dev, "bmi323 pm_runtime_use_autosuspend\n");
 	pm_runtime_use_autosuspend(data->bmi323.dev);
 
 	ret = iio_device_register(indio_dev);
