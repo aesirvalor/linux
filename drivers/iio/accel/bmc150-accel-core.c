@@ -2754,7 +2754,7 @@ static int bmi323_read_avail(struct iio_dev *indio_dev,
 			*vals = bmi323_accel_scales;
 			*length = ARRAY_SIZE(bmi323_accel_scales);
 			return IIO_AVAIL_LIST;
-		case IIO_ANGLEVEL:
+		case IIO_ANGL_VEL:
 			*type = IIO_VAL_INT_PLUS_MICRO;
 			*vals = bmi323_gyro_scales;
 			*length = ARRAY_SIZE(bmi323_gyro_scales);
@@ -2990,7 +2990,6 @@ static const unsigned long bmi323_accel_scan_masks[] = {
 int bmi323_iio_init(struct iio_dev *indio_dev) {
 	const struct iio_dev_attr **fifo_attrs = NULL;
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
-	struct device* dev = NULL;
 
 	if (data->bmi323.i2c_client != NULL) {
 		data->bmi323.dev = &data->bmi323.i2c_client->dev;
@@ -3050,7 +3049,7 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 					  iio_bmi323_trigger_h,
 					  &bmi323_buffer_ops);
 	if (ret < 0) {
-		dev_err(dev, "Failed: iio triggered buffer setup\n");
+		dev_err(data->bmi323.dev, "Failed: iio triggered buffer setup\n");
 		return -500;
 	}
 
@@ -3060,27 +3059,27 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 		dev_err(data->bmi323.dev, "IRQ pin NOT connected: %d :(", data->bmi323.irq);
 	}
 
-	ret = pm_runtime_set_active(dev);
+	ret = pm_runtime_set_active(data->bmi323.dev);
 	if (ret) {
 		goto bmi323_iio_init_err_buffer_cleanup;
 	}
 
-	pm_runtime_enable(dev);
-	pm_runtime_set_autosuspend_delay(dev,
+	pm_runtime_enable(data->bmi323.dev);
+	pm_runtime_set_autosuspend_delay(data->bmi323.dev,
 					 BMC150_BMI323_AUTO_SUSPEND_DELAY_MS);
-	pm_runtime_use_autosuspend(dev);
+	pm_runtime_use_autosuspend(data->bmi323.dev);
 
 	ret = iio_device_register(indio_dev);
 	if (ret < 0) {
-		dev_err(dev, "bmi323 unable to register iio device\n");
+		dev_err(data->bmi323.dev, "bmi323 unable to register iio device\n");
 		goto bmi323_iio_init_err_pm_cleanup;
 	}
 
 	return 0;
 
 bmi323_iio_init_err_pm_cleanup:
-	pm_runtime_dont_use_autosuspend(dev);
-	pm_runtime_disable(dev);
+	pm_runtime_dont_use_autosuspend(data->bmi323.dev);
+	pm_runtime_disable(data->bmi323.dev);
 bmi323_iio_init_err_buffer_cleanup:
 	iio_triggered_buffer_cleanup(indio_dev);
 bmi323_iio_init_err_trigger_unregister:
