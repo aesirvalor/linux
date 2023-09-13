@@ -3001,8 +3001,6 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 
 	int ret = 0;
 
-	pm_runtime_init(data->bmi323.dev);
-
 	mutex_init(&data->bmi323.mutex);
 
 	// now set normal mode...
@@ -3025,6 +3023,8 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	if (ret != 0) {
 		return -2;
 	}
+
+	pm_runtime_mark_last_busy(data->bmi323.dev);
 
 	indio_dev->channels = bmi323_channels;
 	indio_dev->num_channels = ARRAY_SIZE(bmi323_channels);

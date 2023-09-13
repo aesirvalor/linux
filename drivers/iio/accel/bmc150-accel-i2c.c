@@ -219,7 +219,6 @@ static int bmc150_accel_probe(struct i2c_client *client)
 						ARRAY_SIZE(bmi323_data->regulators),
 						bmi323_data->regulators);
 		if (ret) {
-			
 			return dev_err_probe(&client->dev, ret, "failed to get regulators\n");
 		}
 
@@ -292,7 +291,7 @@ static void bmc150_accel_remove(struct i2c_client *client)
 
 	if (data->dev_type == BMI323) {
 		bmi323_iio_deinit(indio_dev);
-		
+
 		return;
 	}
 
