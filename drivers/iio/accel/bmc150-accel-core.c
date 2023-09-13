@@ -3062,6 +3062,10 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 		dev_err(data->bmi323.dev, "IRQ pin NOT connected: %d :(", data->bmi323.irq);
 	}
 
+	if (data->bmi323.dev == NULL) {
+		dev_err(data->bmi323.dev, "bmi323 data->bmi323.dev is NULL\n");
+	}
+
 	dev_err(data->bmi323.dev, "bmi323 pm_runtime_set_active\n");
 	ret = pm_runtime_set_active(data->bmi323.dev);
 	if (ret) {
