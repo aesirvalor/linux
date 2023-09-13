@@ -3202,11 +3202,26 @@ static int bmc150_accel_resume(struct device *dev)
 #ifdef CONFIG_PM
 static int bmc150_accel_runtime_suspend(struct device *dev)
 {
+	dev_err(dev, "bmc150_accel_runtime_suspend entered...");
+
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	if (indio_dev == NULL) {
+		dev_err(dev, "bmc150_accel_runtime_suspend indio_dev is NULL. Fuck!");
+	}
+
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	if (data == NULL) {
+		dev_err(dev, "bmc150_accel_runtime_suspend data is NULL. Fuck!");
+	}
+
 	int ret;
 
+	dev_err(dev, "bmc150_accel_runtime_suspend continue...");
+
 	if (data->dev_type == BMI323) {
+		
+		dev_err(dev, "bmc150_accel_runtime_suspend continue as bmi323...");
+		
 		// TODO: do something here
 		return 0;
 	}
