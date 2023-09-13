@@ -164,6 +164,16 @@ struct bmc150_accel_data {
 #define BMC150_BMI323_GYRO_RANGE_1000_VAL		0x0003 // +/-1000°/s, 32.8 LSB/°/s
 #define BMC150_BMI323_GYRO_RANGE_2000_VAL		0x0004 // +/-2000°/s, 16.4 LSB/°/s
 
+/**
+ *
+ * PRE: in_value holds the data to be sent to the sensor, in little endian format even on big endian
+ *      architectures.
+ *
+ * NOTE: bmi323->dev can be NULL (not yet initialized) when this function is called
+ *			therefore it is not needed and is not used inside the function
+ *
+ * WARNING: this function does not lock any mutex and synchronization MUST be performed by the caller
+ */
 int bmi323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value);
 
 /**
@@ -176,7 +186,7 @@ int bmi323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value
  * NOTE: bmi323->dev can be NULL (not yet initialized) when this function is called
  *			therefore it is not needed and is not used inside the function
  *
- * POST: on success out_value is written with data from the sensor, as it came out so the
+ * POST: on success out_value is written with data from the sensor, as it came out, so the
  *       content is little-endian even on big endian architectures
  *
  * WARNING: this function does not lock any mutex and synchronization MUST be performed by the caller
