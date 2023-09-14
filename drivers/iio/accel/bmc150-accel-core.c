@@ -3334,7 +3334,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 		dev_err(dev, "bmi323 suspending runtime...");
 		
 		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
+		//printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 		
 		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
@@ -3348,7 +3348,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 
 		ret = bmi323_chip_rst(&data->bmi323);
 bmi323_bmc150_accel_runtime_suspend_terminate:
-		mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
+		//mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 		if (ret != 0) {
 			return -EAGAIN;
 		}
@@ -3377,7 +3377,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 		dev_err(dev, "bmi323 resuming runtime...");
 
 		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
+		//printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 
 		// this was done already in runtime_sleep function.
 		//ret = bmi323_chip_rst(&data->bmi323);
@@ -3395,7 +3395,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 		}
 
 bmi323_bmc150_accel_runtime_resume_terminate:
-		mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
+		//mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 		if (ret != 0) {
 			dev_err(dev, "bmi323 bmc150_accel_runtime_resume -EAGAIN");
 			return -EAGAIN;
