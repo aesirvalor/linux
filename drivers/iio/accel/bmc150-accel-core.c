@@ -2493,6 +2493,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				{
 				*val = BMC150_BMI323_TEMPER_CENTER_VAL;
 				*val2 = 0;
+				mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 				return IIO_VAL_INT;
 				}
 			default:
