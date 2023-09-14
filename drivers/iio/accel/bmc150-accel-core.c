@@ -2507,6 +2507,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				{
 					*val = 0;
 					*val2 = BMC150_BMI323_TEMPER_LSB_PER_KELVIN_VAL;
+					mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 					return IIO_VAL_FRACTIONAL;
 				}
 			case IIO_ACCEL:
