@@ -53,16 +53,6 @@
 #define BMC150_ACCEL_DEF_RANGE_8G		0x08
 #define BMC150_ACCEL_DEF_RANGE_16G		0x0C
 
-#define BMI323_ACCEL_DEF_RANGE_2G		0x03
-#define BMI323_ACCEL_DEF_RANGE_4G		0x05
-#define BMI323_ACCEL_DEF_RANGE_8G		0x20 // TODO: do the rest, this is only one true
-#define BMI323_ACCEL_DEF_RANGE_16G		0x0C
-
-#define BMI323_GYRO_DEF_RANGE_2G		0x03
-#define BMI323_GYRO_DEF_RANGE_4G		0x05
-#define BMI323_GYRO_DEF_RANGE_2KDPS		0x40 // TODO: do the rest, this is only one true
-#define BMI323_GYRO_DEF_RANGE_16G		0x0C
-
 /* Default BW: 125Hz */
 #define BMC150_ACCEL_REG_PMU_BW		0x10
 #define BMC150_ACCEL_DEF_BW			125
@@ -201,20 +191,6 @@ static const struct bmi323_scale_accel_info {
 		.val2 = 3281248,
 	},
 };
-
-
-/*
-case IIO_TEMP:
-                        // 0.125 degrees per LSB 
-                        *val = BMI088_ACCEL_TEMP_UNIT; // la macro    125 lol
-                        return IIO_VAL_INT;
-
-// if accel enabled & gyro enabled both in normal or high power mode than sampling frequency is 50Hz
-
-// temperature resulution is 512 LSB/K 0x0000 -> 23 gradi centigradi
-
-
-*/
 
 static const struct bmi323_scale_gyro_info {
 	u16 hw_val;
@@ -2331,13 +2307,6 @@ int bmi323_chip_check(struct bmi323_private_data *bmi323)
 }
 EXPORT_SYMBOL_NS_GPL(bmi323_chip_check, IIO_BMC150);
 
-/**
- * Note: after issuing a reset the the chip will be in what it is called "suspended mode" and the feature angine is
- * ready to be set. This mode has everything disabled and consumes aroud 15uA.
- *
- * When removing the driver or suspend has been requested it's best to reset the chip so that power consumption
- * will be the lowest possible.
- */
 int bmi323_chip_rst(struct bmi323_private_data *bmi323) {
 	u16 sensor_status = 0x0000, device_status = 0x0000;
 	int ret;
@@ -2407,9 +2376,9 @@ static const struct iio_chan_spec bmi323_channels[] = {
 	BMI323_GYRO_CHANNEL(Z, 16),
 	{
 		.type = IIO_TEMP,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) /*|
+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
 				      BIT(IIO_CHAN_INFO_SCALE) |
-				      BIT(IIO_CHAN_INFO_OFFSET)*/,
+				      BIT(IIO_CHAN_INFO_OFFSET),
 		.scan_index = BMI323_TEMP,
 	},
 	IIO_CHAN_SOFT_TIMESTAMP(BMI323_AXIS_MAX),
@@ -2433,7 +2402,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
 	int ret = -EINVAL, was_sleep_modified = -1;
 	u16 raw_read = 0x8000;
-	u8 reg = 0x00;
 
 	mutex_lock(&data->bmi323.mutex);
 
@@ -2520,14 +2488,26 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 		}
 	case IIO_CHAN_INFO_OFFSET:
 		{
-			// TODO: properly implement
-			printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_OFFSET\n");
-			mutex_unlock(&data->bmi323.mutex);
-			ret = -EINVAL;
-			goto bmi323_read_raw_error;
+			switch (chan->type) {
+			case IIO_TEMP:
+				{
+				*val = BMC150_BMI323_TEMPER_CENTER_VAL;
+				*val2 = 0;
+				return IIO_VAL_INT;
+				}
+			default:
+				ret = -EINVAL;
+				goto bmi323_read_raw_error;
+			}
 		}
 	case IIO_CHAN_INFO_SCALE:
 		switch (chan->type) {
+			case IIO_TEMP:
+				{
+					*val = 0;
+					*val2 = BMC150_BMI323_TEMPER_LSB_PER_KELVIN_VAL;
+					return IIO_VAL_FRACTIONAL;
+				}
 			case IIO_ACCEL:
 				{
 					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
@@ -2592,6 +2572,22 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 	case IIO_CHAN_INFO_SAMP_FREQ:
 		switch (chan->type) {
+			case IIO_TEMP:
+				{
+					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
+					if (was_sleep_modified != 0) {
+						ret = was_sleep_modified;
+						goto bmi323_read_raw_error_power;
+					}
+
+					// while in normal or power mode the temperature sensur has a 50Hz sampling frequency
+					*val = 50;
+					*val2 = 0;
+
+					bmi323_set_power_state(&data->bmi323, false);
+					mutex_unlock(&data->bmi323.mutex);
+					return IIO_VAL_INT_PLUS_MICRO;
+				}
 			case IIO_ACCEL:
 				{
 					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
@@ -2675,6 +2671,15 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 	u16 raw_read = 0x8000;
 	int ret = -EINVAL, was_sleep_modified = -1;
 
+	if (iio_buffer_enabled(indio_dev)) {
+		printk(KERN_WARN "bmi323 buffer is enabled now and iio_buffer_enabled returned true");
+		//return -EBUSY;
+	} else {
+
+		printk(KERN_WARN "bmi323 buffer is NOT enabled now and iio_buffer_enabled returned false");
+	}
+				
+
 	mutex_lock(&data->bmi323.mutex);
 
 	switch (mask) {
@@ -2743,6 +2748,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
 
+			/* Termometer also ends up here: its sampling frequency depends on the chip configuration and cannot be changed */
 			default:
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
@@ -2839,10 +2845,7 @@ static int bmi323_read_avail(struct iio_dev *indio_dev,
 			     const int **vals, int *type, int *length,
 			     long mask)
 {
-	struct bmc150_accel_data *data = iio_priv(indio_dev);
-
 	switch (mask) {
-	
 	case IIO_CHAN_INFO_SCALE:
 		switch (chan->type) {
 		case IIO_ACCEL:
@@ -2875,11 +2878,12 @@ static int bmi323_read_event(struct iio_dev *indio_dev,
 				   enum iio_event_info info,
 				   int *val, int *val2)
 {
-	struct bmc150_accel_data *data = iio_priv(indio_dev);
-
 	printk(KERN_CRIT "bmc150 bmi323_read_event\n");
 
 /*
+		struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+
 	*val2 = 0;
 	switch (info) {
 	case IIO_EV_INFO_VALUE:
@@ -2931,7 +2935,7 @@ static int bmi323_read_event_config(struct iio_dev *indio_dev,
 					  enum iio_event_type type,
 					  enum iio_event_direction dir)
 {
-	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	//struct bmc150_accel_data *data = iio_priv(indio_dev);
 
 	printk(KERN_CRIT "bmc150 bmi323_read_event_config\n");
 
@@ -2944,8 +2948,8 @@ static int bmi323_write_event_config(struct iio_dev *indio_dev,
 					   enum iio_event_direction dir,
 					   int state)
 {
-	struct bmc150_accel_data *data = iio_priv(indio_dev);
-	int ret;
+	//struct bmc150_accel_data *data = iio_priv(indio_dev);
+	//int ret;
 
 	printk(KERN_CRIT "bmc150 bmi323_write_event_config\n");
 
@@ -3202,12 +3206,6 @@ void bmi323_iio_deinit(struct iio_dev *indio_dev) {
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
 	struct device* dev = bmi323_get_managed_device(&data->bmi323);
 
-	mutex_lock(&data->bmi323.mutex);
-	// TODO: put the chip in a sleeping status...
-	mutex_unlock(&data->bmi323.mutex);
-
-	/*dev_info*/ dev_err(dev, "bmc323 removing driver...\n");
-
 	iio_device_unregister(indio_dev);
 
 	pm_runtime_disable(dev);
@@ -3216,9 +3214,11 @@ void bmi323_iio_deinit(struct iio_dev *indio_dev) {
 
 	iio_triggered_buffer_cleanup(indio_dev);
 
-	/*dev_info*/ dev_err(dev, "bmc323 deallocating driver storage...\n");
-
-	iio_device_free(indio_dev);
+	//iio_device_free(indio_dev); // this isn't done in the bmg160 driver nor in other drivers so I guess I shouldn't do it too
+	
+	mutex_lock(&data->bmi323.mutex);
+	bmi323_chip_rst(&data->bmi323);
+	mutex_unlock(&data->bmi323.mutex);
 
 	/*dev_info*/ dev_err(dev, "bmc323 removal done.\n");
 }
@@ -3244,7 +3244,6 @@ static int bmc150_accel_suspend(struct device *dev)
 			dev_err(dev, "bmi323 error in resetting the chip on suspend: will sleep in high consumption mode.");
 		}
 
-		// TODO: do something here
 		return 0;
 	}
 
@@ -3287,7 +3286,10 @@ bmi323_bmc150_accel_suspend_terminate:
 			return -EAGAIN;
 		}
 		
-		// datasheet say "Start-up time": suspend to high performance mode is typecally 30ms, let's sleep a bit longer to revent issues...
+		/*
+		 * datasheet says "Start-up time": suspend to high performance mode is tipically 30ms,
+		 * let's sleep a bit longer to prevent issues and give time to the sensor to pick up the first reading...
+		 */
 		msleep_interruptible(32);
 
 		return 0;

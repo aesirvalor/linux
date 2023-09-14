@@ -109,6 +109,9 @@ struct bmc150_accel_data {
 	struct bmi323_private_data bmi323;
 	};
 
+#define BMC150_BMI323_TEMPER_CENTER_VAL 23
+#define BMC150_BMI323_TEMPER_LSB_PER_KELVIN_VAL 512
+
 #define BMC150_BMI323_AUTO_SUSPEND_DELAY_MS 2000
 
 #define BMC150_BMI323_CHIP_ID_REG 0x00
@@ -194,6 +197,19 @@ int bmi323_write_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16 in_value
 int bmi323_read_u16(struct bmi323_private_data *bmi323, u8 in_reg, u16* out_value);
 
 int bmi323_chip_check(struct bmi323_private_data *bmi323);
+
+/**
+ * Reset the chip in a known state that is ready to accept commands, but is not configured therefore after calling this function
+ * it is required to load a new configuration to start data acquisition.
+ *
+ * PRE: bmi323 has been fully identified and partially initialized
+ *
+ * NOTE: after issuing a reset the the chip will be in what it is called "suspended mode" and the feature angine is
+ * ready to be set. This mode has everything disabled and consumes aroud 15uA.
+ *
+ * When removing the driver or suspend has been requested it's best to reset the chip so that power consumption
+ * will be the lowest possible.
+ */
 int bmi323_chip_rst(struct bmi323_private_data *bmi323);
 
 /**
