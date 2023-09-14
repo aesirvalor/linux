@@ -2403,7 +2403,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 	int ret = -EINVAL, was_sleep_modified = -1;
 	u16 raw_read = 0x8000;
 
-	dev_err(dev, "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
+	printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
@@ -2431,7 +2431,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				
 				*val = sign_extend32(le16_to_cpu(raw_read), 15);
 				bmi323_set_power_state(&data->bmi323, false);
-				mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+				mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 				return IIO_VAL_INT;
 
 			case IIO_ACCEL:
@@ -2455,7 +2455,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 				*val = sign_extend32(le16_to_cpu(raw_read), 15);
 				bmi323_set_power_state(&data->bmi323, false);
-				mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+				mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 				return IIO_VAL_INT;
 
 			case IIO_ANGL_VEL:
@@ -2480,7 +2480,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 				*val = sign_extend32(le16_to_cpu(raw_read), 15);
 				bmi323_set_power_state(&data->bmi323, false);
-				mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+				mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 				return IIO_VAL_INT;
 			default:
 				goto bmi323_read_raw_error;
@@ -2529,7 +2529,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							*val2 = bmi323_accel_scale_map[s].val2;
 
 							bmi323_set_power_state(&data->bmi323, false);
-							mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+							mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 							return IIO_VAL_INT_PLUS_NANO;
 						}
 					}
@@ -2557,7 +2557,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							*val2 = bmi323_gyro_scale_map[s].val2;
 
 							bmi323_set_power_state(&data->bmi323, false);
-							mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+							mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 							return IIO_VAL_INT_PLUS_MICRO;
 						}
 					}
@@ -2585,7 +2585,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 					*val2 = 0;
 
 					bmi323_set_power_state(&data->bmi323, false);
-					mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+					mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 					return IIO_VAL_INT_PLUS_MICRO;
 				}
 			case IIO_ACCEL:
@@ -2608,7 +2608,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							*val2 = bmi323_accel_odr_map[s].val2;
 
 							bmi323_set_power_state(&data->bmi323, false);
-							mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+							mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 							return IIO_VAL_INT_PLUS_MICRO;
 						}
 					}
@@ -2636,7 +2636,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							*val2 = bmi323_gyro_odr_map[s].val2;
 
 							bmi323_set_power_state(&data->bmi323, false);
-							mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+							mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 							return IIO_VAL_INT_PLUS_MICRO;
 						}
 					}
@@ -2659,7 +2659,7 @@ bmi323_read_raw_error:
 	}
 
 bmi323_read_raw_error_power:
-	mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+	mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 	return ret;
 }
 
@@ -2680,7 +2680,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 	}
 				
 
-	dev_err(dev, "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
+	printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 
 	switch (mask) {
 	case IIO_CHAN_INFO_SAMP_FREQ:
@@ -2709,7 +2709,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						}
 
 						bmi323_set_power_state(&data->bmi323, false);
-						mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+						mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 						return 0;
 					}
 				}
@@ -2740,7 +2740,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						}
 
 						bmi323_set_power_state(&data->bmi323, false);
-						mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+						mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 						return 0;
 					}
 				}
@@ -2781,7 +2781,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						}
 
 						bmi323_set_power_state(&data->bmi323, false);
-						mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+						mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 						return 0;
 					}
 				}
@@ -2812,7 +2812,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						}
 
 						bmi323_set_power_state(&data->bmi323, false);
-						mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+						mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 						return 0;
 					}
 				}
@@ -2836,7 +2836,7 @@ bmi323_write_raw_error:
 	}
 
 bmi323_write_raw_error_power:
-	mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+	mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 	return ret;
 }
 
@@ -3216,9 +3216,9 @@ void bmi323_iio_deinit(struct iio_dev *indio_dev) {
 
 	//iio_device_free(indio_dev); // this isn't done in the bmg160 driver nor in other drivers so I guess I shouldn't do it too
 	
-	dev_err(dev, "bmi323 %s mutex_lock", __func__);mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
+	printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 	bmi323_chip_rst(&data->bmi323);
-	mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+	mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 
 	/*dev_info*/ dev_err(dev, "bmc323 removal done.\n");
 }
@@ -3238,9 +3238,7 @@ static int bmc150_accel_suspend(struct device *dev)
 		dev_err(dev, "bmi323 suspending driver...");
 		
 		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		dev_err(dev, "bmi323 %s mutex_lock", __func__);
-		dev_err(dev, "bmi323 %s mutex_lock", __func__);mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
-		dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
+		printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 		
 		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
@@ -3254,7 +3252,7 @@ static int bmc150_accel_suspend(struct device *dev)
 
 		ret = bmi323_chip_rst(&data->bmi323);
 bmi323_bmc150_accel_suspend_terminate:
-		mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+		mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 		if (ret != 0) {
 			return -EAGAIN;
 		}
@@ -3280,7 +3278,7 @@ static int bmc150_accel_resume(struct device *dev)
 		dev_err(dev, "bmi323 resuming driver...");
 
 		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		dev_err(dev, "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
+		printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 
 		// this was done already in runtime_sleep function.
 		//ret = bmi323_chip_rst(&data->bmi323);
@@ -3296,7 +3294,7 @@ static int bmc150_accel_resume(struct device *dev)
 		}
 
 bmi323_bmc150_accel_suspend_terminate:
-		mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+		mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 		if (ret != 0) {
 			return -EAGAIN;
 		}
@@ -3334,7 +3332,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 		dev_err(dev, "bmi323 suspending runtime...");
 		
 		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		dev_err(dev, "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
+		printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 		
 		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
@@ -3348,7 +3346,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 
 		ret = bmi323_chip_rst(&data->bmi323);
 bmi323_bmc150_accel_runtime_suspend_terminate:
-		mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+		mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 		if (ret != 0) {
 			return -EAGAIN;
 		}
@@ -3377,7 +3375,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 		dev_err(dev, "bmi323 resuming runtime...");
 
 		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		dev_err(dev, "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_lock'ed", __func__);
+		printk(KERN_ERR "bmi323 %s mutex_lock", __func__);mutex_lock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_lock'ed", __func__);
 
 		// this was done already in runtime_sleep function.
 		//ret = bmi323_chip_rst(&data->bmi323);
@@ -3395,7 +3393,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 		}
 
 bmi323_bmc150_accel_runtime_resume_terminate:
-		mutex_unlock(&data->bmi323.mutex);dev_err(dev, "bmi323 %s mutex_unlock", __func__);
+		mutex_unlock(&data->bmi323.mutex);printk(KERN_ERR "bmi323 %s mutex_unlock", __func__);
 		if (ret != 0) {
 			dev_err(dev, "bmi323 bmc150_accel_runtime_resume -EAGAIN");
 			return -EAGAIN;
