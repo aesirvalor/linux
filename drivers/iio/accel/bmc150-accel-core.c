@@ -2672,11 +2672,11 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 	int ret = -EINVAL, was_sleep_modified = -1;
 
 	if (iio_buffer_enabled(indio_dev)) {
-		printk(KERN_WARN "bmi323 buffer is enabled now and iio_buffer_enabled returned true");
+		printk(KERN_WARNING "bmi323 buffer is enabled now and iio_buffer_enabled returned true");
 		//return -EBUSY;
 	} else {
 
-		printk(KERN_WARN "bmi323 buffer is NOT enabled now and iio_buffer_enabled returned false");
+		printk(KERN_WARNING "bmi323 buffer is NOT enabled now and iio_buffer_enabled returned false");
 	}
 				
 
