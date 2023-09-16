@@ -1416,8 +1416,9 @@ static const struct iio_event_spec bmc150_accel_event = {
 	.modified = 1,							\
 	.channel2 = IIO_MOD_##_axis,					\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
-	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |		\
-				BIT(IIO_CHAN_INFO_SAMP_FREQ),		\
+	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE)		\
+				| BIT(IIO_CHAN_INFO_SAMP_FREQ)        \
+				| BIT(IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY),		\
 	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SAMP_FREQ) \
 				| BIT(IIO_CHAN_INFO_SCALE), \
 	.scan_index = BMI323_ACCEL_AXIS_##_axis,					\
@@ -1438,8 +1439,9 @@ static const struct iio_event_spec bmc150_accel_event = {
 	.modified = 1,							\
 	.channel2 = IIO_MOD_##_axis,					\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
-	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) |		\
-				BIT(IIO_CHAN_INFO_SAMP_FREQ),		\
+	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE)		\
+				| BIT(IIO_CHAN_INFO_SAMP_FREQ)        \
+				| BIT(IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY),		\
 	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SAMP_FREQ) \
 				| BIT(IIO_CHAN_INFO_SCALE), \
 	.scan_index = BMI323_GYRO_AXIS_##_axis,					\
@@ -2571,7 +2573,15 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				ret = -EINVAL;
 				goto bmi323_read_raw_error;
 		}
-
+	case IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY:
+		switch (chan->type) {
+			
+			default:
+			{
+				ret = -EINVAL;
+				goto bmi323_read_raw_error;
+			}
+		}
 	case IIO_CHAN_INFO_SAMP_FREQ:
 		switch (chan->type) {
 			case IIO_TEMP:
@@ -2685,6 +2695,15 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 	mutex_lock(&data->bmi323.mutex);
 
 	switch (mask) {
+	case IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY:
+		switch (chan->type) {
+			
+			default:
+			{
+				ret = -EINVAL;
+				goto bmi323_write_raw_error;
+			}
+		}
 	case IIO_CHAN_INFO_SAMP_FREQ:
 		switch (chan->type) {
 			case IIO_ACCEL:
