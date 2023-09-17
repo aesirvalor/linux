@@ -222,7 +222,7 @@ static const struct bmi323_scale_gyro_info {
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
-		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_250_VAL << (u16)4,
 		.val = 0,
 		.val2 = 133,
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
@@ -234,7 +234,7 @@ static const struct bmi323_scale_gyro_info {
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
-		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_500_VAL << (u16)4,
 		.val = 0,
 		.val2 = 266,
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
@@ -249,6 +249,18 @@ static const struct bmi323_scale_gyro_info {
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_1000_VAL << (u16)4,
 		.val = 0,
 		.val2 = 532,
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
+	},
+	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4,
+		.val = 0,
+		.val2 = 1064724,
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
+	},
+	{ // this shouldn't be necessary, but iio seems to have a wrong rounding of this value...
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4,
+		.val = 0,
+		.val2 = 1064,
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
