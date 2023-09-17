@@ -3733,21 +3733,21 @@ static int bmc150_accel_resume(struct device *dev)
 			if (ret == 0) {
 				data->bmi323.flags &= ~BMI323_FLAGS_RESET_FAILED;
 			} else {
-				goto bmi323_bmc150_accel_runtime_resume_terminate;
+				goto bmi323_bmc150_accel_resume_terminate;
 			}
 		}
 		
 		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
-			goto bmi323_bmc150_accel_suspend_terminate;
+			goto bmi323_bmc150_accel_resume_terminate;
 		}
 
 		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, data->bmi323.acc_conf_reg_value);
 		if (ret != 0) {
-			goto bmi323_bmc150_accel_suspend_terminate;
+			goto bmi323_bmc150_accel_resume_terminate;
 		}
 
-bmi323_bmc150_accel_suspend_terminate:
+bmi323_bmc150_accel_resume_terminate:
 		mutex_unlock(&data->bmi323.mutex);
 		if (ret != 0) {
 			return -EAGAIN;
