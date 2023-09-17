@@ -210,9 +210,21 @@ static const struct bmi323_scale_gyro_info {
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
+		.val = 0,
+		.val2 = 66,
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
+	},
+	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_250_VAL << (u16)4,
 		.val = 0,
 		.val2 = 133090,
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
+	},
+	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
+		.val = 0,
+		.val2 = 133,
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
@@ -222,15 +234,27 @@ static const struct bmi323_scale_gyro_info {
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
+		.val = 0,
+		.val2 = 266,
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
+	},
+	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_1000_VAL << (u16)4,
 		.val = 0,
 		.val2 = 532362,
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
+		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_1000_VAL << (u16)4,
+		.val = 0,
+		.val2 = 532,
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
+	},
+	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4,
 		.val = 0,
-		.val2 = 1064724,
+		.val2 = 1065,
 		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 };
@@ -3187,7 +3211,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 					}
 				}
 
-				dev_warn(data->bmi323.dev, "bmi323 error: accel scale val=%d,val2=%d unavailable. Ignoring", val, val2);
+				dev_warn(data->bmi323.dev, "bmi323 error: accel scale val=%d,val2=%d unavailable: ignoring.", val, val2);
 
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
@@ -3215,7 +3239,7 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 					}
 				}
 
-				dev_warn(data->bmi323.dev, "bmi323 error: gyro scale val=%d,val2=%d unavailable. Ignoring", val, val2);
+				dev_warn(data->bmi323.dev, "bmi323 error: gyro scale val=%d,val2=%d unavailable: ignoring.", val, val2);
 
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
