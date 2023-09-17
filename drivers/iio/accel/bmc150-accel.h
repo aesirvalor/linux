@@ -75,6 +75,7 @@ struct bmi323_private_data {
 	u32 flags;
 	u16 acc_conf_reg_value;
 	u16 gyr_conf_reg_value;
+	u16 fifo_conf_reg_value;
 };
 
 struct bmc150_accel_data {
@@ -121,6 +122,7 @@ struct bmc150_accel_data {
 #define BMC150_BMI323_TEMPERATURE_DATA_REG	0x09
 #define BMC150_BMI323_ACC_CONF_REG			0x20
 #define BMC150_BMI323_GYR_CONF_REG			0x21
+#define BMC150_BMI323_FIFO_CONF_REG			0x36
 
 // these are bits [0:3] of ACC_CONF.acc_odr, sample rate in Hz for the accel part of the chip
 #define BMC150_BMI323_ACCEL_ODR_0_78123_VAL	0x0001

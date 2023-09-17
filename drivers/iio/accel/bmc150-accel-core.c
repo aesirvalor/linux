@@ -1919,32 +1919,6 @@ err_read:
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t bmi323_trigger_handler(int irq, void *p)
-{
-	struct iio_poll_func *pf = p;
-	struct iio_dev *indio_dev = pf->indio_dev;
-	struct bmc150_accel_data *data = iio_priv(indio_dev);
-	int ret;
-
-/*
-	mutex_lock(&data->mutex);
-	ret = regmap_bulk_read(data->regmap, BMC150_ACCEL_REG_XOUT_L,
-			       data->buffer, AXIS_MAX * 2);
-	mutex_unlock(&data->mutex);
-	if (ret < 0)
-		goto err_read;
-
-	iio_push_to_buffers_with_timestamp(indio_dev, data->buffer,
-					   pf->timestamp);
-err_read:
-*/
-	iio_trigger_notify_done(indio_dev->trig);
-
-
-	return IRQ_HANDLED;
-}
-
-
 static void bmc150_accel_trig_reen(struct iio_trigger *trig)
 {
 	struct bmc150_accel_trigger *t = iio_trigger_get_drvdata(trig);
@@ -2290,15 +2264,6 @@ static const struct iio_buffer_setup_ops bmc150_accel_buffer_ops = {
 	.postdisable = bmc150_accel_buffer_postdisable,
 };
 
-static const struct iio_buffer_setup_ops bmi323_buffer_ops = {
-/*
-	.preenable = bmi323_buffer_preenable,
-	.postenable = bmi323_buffer_postenable,
-	.predisable = bmi323_buffer_predisable,
-	.postdisable = bmi323_buffer_postdisable,
-*/
-};
-
 static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
 {
 	struct device *dev = regmap_get_device(data->regmap);
@@ -2639,6 +2604,108 @@ int bmi323_chip_check(struct bmi323_private_data *bmi323)
 }
 EXPORT_SYMBOL_NS_GPL(bmi323_chip_check, IIO_BMC150);
 
+static irqreturn_t bmi323_trigger_handler(int irq, void *p)
+{
+	struct iio_poll_func *pf = p;
+	struct iio_dev *indio_dev = pf->indio_dev;
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	int ret;
+
+/*
+	mutex_lock(&data->mutex);
+	ret = regmap_bulk_read(data->regmap, BMC150_ACCEL_REG_XOUT_L,
+			       data->buffer, AXIS_MAX * 2);
+	mutex_unlock(&data->mutex);
+	if (ret < 0)
+		goto err_read;
+
+	iio_push_to_buffers_with_timestamp(indio_dev, data->buffer,
+					   pf->timestamp);
+err_read:
+*/
+	iio_trigger_notify_done(indio_dev->trig);
+
+
+	return IRQ_HANDLED;
+}
+
+static int bmi323_buffer_preenable(struct iio_dev *indio_dev)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	return bmi323_set_power_state(&data->bmi323, true);
+}
+
+static int bmi323_buffer_postenable(struct iio_dev *indio_dev)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	int ret = 0;
+
+	/*if (iio_device_get_current_mode(indio_dev) == INDIO_BUFFER_TRIGGERED)
+		return 0;
+
+	mutex_lock(&data->mutex);
+
+	if (!data->watermark)
+		goto out;
+
+	ret = bmc150_accel_set_interrupt(data, BMC150_ACCEL_INT_WATERMARK,
+					 true);
+	if (ret)
+		goto out;
+
+	data->fifo_mode = BMC150_ACCEL_FIFO_MODE_FIFO;
+
+	ret = bmc150_accel_fifo_set_mode(data);
+	if (ret) {
+		data->fifo_mode = 0;
+		bmc150_accel_set_interrupt(data, BMC150_ACCEL_INT_WATERMARK,
+					   false);
+	}
+
+out:
+	mutex_unlock(&data->mutex);
+*/
+	return ret;
+}
+
+static int bmi323_buffer_predisable(struct iio_dev *indio_dev)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+/*
+	if (iio_device_get_current_mode(indio_dev) == INDIO_BUFFER_TRIGGERED)
+		return 0;
+
+	mutex_lock(&data->mutex);
+
+	if (!data->fifo_mode)
+		goto out;
+
+	bmc150_accel_set_interrupt(data, BMC150_ACCEL_INT_WATERMARK, false);
+	__bmc150_accel_fifo_flush(indio_dev, BMC150_ACCEL_FIFO_LENGTH, false);
+	data->fifo_mode = 0;
+	bmc150_accel_fifo_set_mode(data);
+
+out:
+	mutex_unlock(&data->mutex);
+*/
+	return 0;
+}
+
+static int bmi323_buffer_postdisable(struct iio_dev *indio_dev)
+{
+	struct bmc150_accel_data *data = iio_priv(indio_dev);
+
+	return bmi323_set_power_state(&data->bmi323, true);
+}
+
+static const struct iio_buffer_setup_ops bmi323_buffer_ops = {
+	.preenable = bmi323_buffer_preenable,
+	.postenable = bmi323_buffer_postenable,
+	.predisable = bmi323_buffer_predisable,
+	.postdisable = bmi323_buffer_postdisable,
+};
+
 int bmi323_chip_rst(struct bmi323_private_data *bmi323) {
 	u16 sensor_status = 0x0000, device_status = 0x0000;
 	int ret;
@@ -2846,28 +2913,12 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 			case IIO_ACCEL:
 				{
-					/*
-					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-					if (was_sleep_modified != 0) {
-						ret = was_sleep_modified;
-						goto bmi323_read_raw_error_power;
-					}
-					
-					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
-					if (ret != 0) {
-						printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_CHAN_INFO_SCALE/IIO_ACCEL bmi323_read_u16 returned %d\n", ret);
-						goto bmi323_read_raw_error;
-					}
-
-					u8* le_raw_read = (u8*)&raw_read;
-					*/
 					u8* le_raw_read = (u8*)&data->bmi323.acc_conf_reg_value;
 					for (int s = 0; s < ARRAY_SIZE(bmi323_accel_scale_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0b01110000U)) == (bmi323_accel_scale_map[s].hw_val)) {
 							*val = bmi323_accel_scale_map[s].val;
 							*val2 = bmi323_accel_scale_map[s].val2;
 
-							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
 							return bmi323_accel_scale_map[s].ret_type;
 						}
@@ -2878,27 +2929,12 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 			case IIO_ANGL_VEL:
 				{
-					/*
-					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-					if (was_sleep_modified != 0) {
-						ret = was_sleep_modified;
-						goto bmi323_read_raw_error_power;
-					}
-
-					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
-					if (ret != 0) {
-						goto bmi323_read_raw_error;
-					}
-
-					u8* le_raw_read = (u8*)&raw_read;
-					*/
 					u8* le_raw_read = (u8*)&data->bmi323.gyr_conf_reg_value;
 					for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_scale_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0b01110000U)) == (bmi323_gyro_scale_map[s].hw_val)) {
 							*val = bmi323_gyro_scale_map[s].val;
 							*val2 = bmi323_gyro_scale_map[s].val2;
 
-							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
 							return bmi323_gyro_scale_map[s].ret_type;
 						}
@@ -2915,20 +2951,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 		switch (chan->type) {
 			case IIO_ACCEL:
 				{
-					/*
-					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-					if (was_sleep_modified != 0) {
-						ret = was_sleep_modified;
-						goto bmi323_read_raw_error_power;
-					}
-
-					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
-					if (ret != 0) {
-						goto bmi323_read_raw_error;
-					}
-
-					u8* le_raw_read = (u8*)&raw_read;
-					*/
 					u8* le_raw_read = (u8*)&data->bmi323.acc_conf_reg_value;
 					for (int s = 0; s < ARRAY_SIZE(bmi323_accel_odr_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_accel_odr_map[s].hw_val)) {
@@ -2940,7 +2962,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							*val = bmi323_accel_3db_freq_cutoff[(s * 2) + freq_adj].val;
 							*val2 = bmi323_accel_3db_freq_cutoff[(s * 2) + freq_adj].val2;
 
-							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
 							return IIO_VAL_INT_PLUS_MICRO;
 						}
@@ -2951,20 +2972,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 			case IIO_ANGL_VEL:
 				{
-					/*
-					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-					if (was_sleep_modified != 0) {
-						ret = was_sleep_modified;
-						goto bmi323_read_raw_error_power;
-					}
-
-					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
-					if (ret != 0) {
-						goto bmi323_read_raw_error;
-					}
-
-					u8* le_raw_read = (u8*)&raw_read;
-					*/
 					u8* le_raw_read = (u8*)&data->bmi323.gyr_conf_reg_value;
 					for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_gyro_odr_map[s].hw_val)) {
@@ -2976,7 +2983,6 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							*val = bmi323_gyro_3db_freq_cutoff[(s * 2) + freq_adj].val;
 							*val2 = bmi323_gyro_3db_freq_cutoff[(s * 2) + freq_adj].val2;
 
-							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
 							return IIO_VAL_INT_PLUS_MICRO;
 						}
@@ -3011,27 +3017,12 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 			case IIO_ACCEL:
 				{
-					/*
-					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-					if (was_sleep_modified != 0) {
-						ret = was_sleep_modified;
-						goto bmi323_read_raw_error_power;
-					}
-
-					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
-					if (ret != 0) {
-						goto bmi323_read_raw_error;
-					}
-
-					u8* le_raw_read = (u8*)&raw_read;
-					*/
 					u8* le_raw_read = (u8*)&data->bmi323.acc_conf_reg_value;
 					for (int s = 0; s < ARRAY_SIZE(bmi323_accel_odr_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_accel_odr_map[s].hw_val)) {
 							*val = bmi323_accel_odr_map[s].val;
 							*val2 = bmi323_accel_odr_map[s].val2;
 
-							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
 							return IIO_VAL_INT_PLUS_MICRO;
 						}
@@ -3042,27 +3033,12 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				}
 			case IIO_ANGL_VEL:
 				{
-					/*
-					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-					if (was_sleep_modified != 0) {
-						ret = was_sleep_modified;
-						goto bmi323_read_raw_error_power;
-					}
-
-					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
-					if (ret != 0) {
-						goto bmi323_read_raw_error;
-					}
-
-					u8* le_raw_read = (u8*)&raw_read;
-					*/
 					u8* le_raw_read = (u8*)&data->bmi323.gyr_conf_reg_value;
 					for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
 						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_gyro_odr_map[s].hw_val)) {
 							*val = bmi323_gyro_odr_map[s].val;
 							*val2 = bmi323_gyro_odr_map[s].val2;
 
-							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
 							return IIO_VAL_INT_PLUS_MICRO;
 						}
@@ -3095,7 +3071,6 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 				  int val, int val2, long mask)
 {
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
-	u16 raw_read = 0x8000;
 	int ret = -EINVAL, was_sleep_modified = -1;
 
 	if (iio_buffer_enabled(indio_dev)) {
@@ -3127,30 +3102,24 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 	case IIO_CHAN_INFO_SAMP_FREQ:
 		switch (chan->type) {
 			case IIO_ACCEL:
-				/*
-				was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-				if (was_sleep_modified != 0) {
-					ret = was_sleep_modified;
-					goto bmi323_write_raw_error_power;
-				}
-				*/
 				for (int s = 0; s < ARRAY_SIZE(bmi323_accel_odr_map); ++s) {
 					if ((bmi323_accel_odr_map[s].val == val) && (bmi323_accel_odr_map[s].val2 == val2)) {
-						/*ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
-						if (ret != 0) {
-							goto bmi323_write_raw_error;
-						}*/
-
 						u8* le_raw_read = (u8*)&data->bmi323.acc_conf_reg_value;
 						le_raw_read[0] &= (u8)0b11110000U;
 						le_raw_read[0] |= ((u8)bmi323_gyro_odr_map[s].hw_val);
+
+						was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
+						if (was_sleep_modified != 0) {
+							ret = was_sleep_modified;
+							goto bmi323_write_raw_error_power;
+						}
 
 						ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, data->bmi323.acc_conf_reg_value);
 						if (ret != 0) {
 							goto bmi323_write_raw_error;
 						}
 
-						//bmi323_set_power_state(&data->bmi323, false);
+						bmi323_set_power_state(&data->bmi323, false);
 						mutex_unlock(&data->bmi323.mutex);
 						return 0;
 					}
@@ -3159,29 +3128,24 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
 			case IIO_ANGL_VEL:
-				/*was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-				if (was_sleep_modified != 0) {
-					ret = was_sleep_modified;
-					goto bmi323_write_raw_error_power;
-				}*/
-
 				for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
 					if ((bmi323_gyro_odr_map[s].val == val) && (bmi323_gyro_odr_map[s].val2 == val2)) {
-						/*ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
-						if (ret != 0) {
-							goto bmi323_write_raw_error;
-						}*/
-
 						u8* le_raw_read = (u8*)&data->bmi323.gyr_conf_reg_value;
 						le_raw_read[0] &= (u8)0b11110000U;
 						le_raw_read[0] |= ((u8)bmi323_gyro_odr_map[s].hw_val);
+
+						was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
+						if (was_sleep_modified != 0) {
+							ret = was_sleep_modified;
+							goto bmi323_write_raw_error_power;
+						}
 
 						ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
 						if (ret != 0) {
 							goto bmi323_write_raw_error;
 						}
 
-						//bmi323_set_power_state(&data->bmi323, false);
+						bmi323_set_power_state(&data->bmi323, false);
 						mutex_unlock(&data->bmi323.mutex);
 						return 0;
 					}
@@ -3200,31 +3164,24 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 	case IIO_CHAN_INFO_SCALE:
 		switch (chan->type) {
 			case IIO_ACCEL:
-				/*
-				was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-				if (was_sleep_modified != 0) {
-					ret = was_sleep_modified;
-					goto bmi323_write_raw_error_power;
-				}
-				*/
-
 				for (int s = 0; s < ARRAY_SIZE(bmi323_accel_scale_map); ++s) {
 					if ((bmi323_accel_scale_map[s].val == val) && (bmi323_accel_scale_map[s].val2 == val2)) {
-						/*ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
-						if (ret != 0) {
-							goto bmi323_write_raw_error;
-						}*/
-
 						u8* le_raw_read = (u8*)&data->bmi323.acc_conf_reg_value;
 						le_raw_read[0] &= (u8)0b10001111U;
 						le_raw_read[0] |= ((u8)bmi323_accel_scale_map[s].hw_val);
-						
+
+						was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
+						if (was_sleep_modified != 0) {
+							ret = was_sleep_modified;
+							goto bmi323_write_raw_error_power;
+						}
+
 						ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, data->bmi323.acc_conf_reg_value);
 						if (ret != 0) {
 							goto bmi323_write_raw_error;
 						}
 
-						//bmi323_set_power_state(&data->bmi323, false);
+						bmi323_set_power_state(&data->bmi323, false);
 						mutex_unlock(&data->bmi323.mutex);
 						return 0;
 					}
@@ -3233,22 +3190,17 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
 			case IIO_ANGL_VEL:
-				/*was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
-				if (was_sleep_modified != 0) {
-					ret = was_sleep_modified;
-					goto bmi323_write_raw_error_power;
-				}*/
-
 				for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_scale_map); ++s) {
 					if ((bmi323_gyro_scale_map[s].val == val) && (bmi323_gyro_scale_map[s].val2 == val2)) {
-						/*ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
-						if (ret != 0) {
-							goto bmi323_write_raw_error;
-						}*/
-
 						u8* le_raw_read = (u8*)&data->bmi323.gyr_conf_reg_value;
 						le_raw_read[0] &= (u8)0b10001111U;
 						le_raw_read[0] |= ((u8)bmi323_gyro_scale_map[s].hw_val);
+
+						was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
+						if (was_sleep_modified != 0) {
+							ret = was_sleep_modified;
+							goto bmi323_write_raw_error_power;
+						}
 
 						ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.acc_conf_reg_value);
 						if (ret != 0) {
@@ -3547,6 +3499,9 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 
 	mutex_init(&data->bmi323.mutex);
 
+	// FIFO enabled for gyro, accel and temp. Overwrite older samples.
+	data->bmi323.fifo_conf_reg_value = cpu_to_le16((u16)0x0E00U);
+
 	// now set the (default) normal mode...
 	// normal mode: 0x4000
 	// no averaging: 0x0000
@@ -3557,6 +3512,12 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	// no averaging: 0x0000
 	// filtering to ODR/2: 0x0000
 	data->bmi323.gyr_conf_reg_value = cpu_to_le16(0x4000 | ((u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4U) | ((u16)BMC150_BMI323_ACCEL_ODR_100_VAL));
+
+	// the datasheet states that FIFO buffer MUST be enabled before enabling any sensor
+	ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_FIFO_CONF_REG, data->bmi323.fifo_conf_reg_value);
+	if (ret != 0) {
+		return -1;
+	}
 
 	ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, data->bmi323.acc_conf_reg_value);
 	if (ret != 0) {
@@ -3578,6 +3539,8 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	indio_dev->info = &bmi323_accel_info;
 	indio_dev->label = "bmi323-accel_base";
 
+	// TODO: register triggers BEFORE buffer setup so that they are cleared on emergence exit by bmi323_iio_init_err_trigger_unregister
+
 	/*
 	ret = iio_triggered_buffer_setup_ext(indio_dev,
 					     &iio_pollfunc_store_time,
@@ -3590,9 +3553,6 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 		return -500;
 	}
 	*/
-
-	// TODO: register triggest BEFORE buffer setup so that they are cleared on emergence exit by bmi323_iio_init_err_trigger_unregister
-
 
 	ret = iio_triggered_buffer_setup(indio_dev, NULL,
 					  iio_bmi323_trigger_h,
@@ -3664,7 +3624,7 @@ void bmi323_iio_deinit(struct iio_dev *indio_dev) {
 	bmi323_chip_rst(&data->bmi323);
 	mutex_unlock(&data->bmi323.mutex);
 
-	/*dev_info*/ dev_err(dev, "bmc323 removal done.\n");
+	dev_info(dev, "bmc323 removal done.\n");
 }
 EXPORT_SYMBOL_NS_GPL(bmi323_iio_deinit, IIO_BMC150);
 
@@ -3683,21 +3643,8 @@ static int bmc150_accel_suspend(struct device *dev)
 		
 		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
 		mutex_unlock(&data->bmi323.mutex);
-		
-		/*
-		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &data->bmi323.gyr_conf_reg_value);
-		if (ret != 0) {
-			goto bmi323_bmc150_accel_suspend_terminate;
-		}
-
-		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &data->bmi323.acc_conf_reg_value);
-		if (ret != 0) {
-			goto bmi323_bmc150_accel_suspend_terminate;
-		}
-		*/
 
 		ret = bmi323_chip_rst(&data->bmi323);
-bmi323_bmc150_accel_suspend_terminate:
 		mutex_unlock(&data->bmi323.mutex);
 		if (ret != 0) {
 			data->bmi323.flags |= BMI323_FLAGS_RESET_FAILED;
@@ -3786,23 +3733,10 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 		dev_warn(dev, "bmi323 suspending runtime...");
 		
 		/*
-		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		//mutex_lock(&data->bmi323.mutex);
-		
-		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &data->bmi323.gyr_conf_reg_value);
-		if (ret != 0) {
-			goto bmi323_bmc150_accel_runtime_suspend_terminate;
-		}
-
-		ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &data->bmi323.acc_conf_reg_value);
-		if (ret != 0) {
-			goto bmi323_bmc150_accel_runtime_suspend_terminate;
-		}
-		*/
-
+		 * Every operation requiring this function have the mutex locked already:
+		 * with mutex_lock(&data->bmi323.mutex);
+		 */
 		ret = bmi323_chip_rst(&data->bmi323);
-bmi323_bmc150_accel_runtime_suspend_terminate:
-		//mutex_unlock(&data->bmi323.mutex);
 		if (ret != 0) {
 			data->bmi323.flags |= BMI323_FLAGS_RESET_FAILED;
 			return -EAGAIN;
@@ -3831,10 +3765,12 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 	if (data->dev_type == BMI323) {
 		dev_warn(dev, "bmi323 resuming runtime...");
 
-		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
-		//mutex_lock(&data->bmi323.mutex);
+		/*
+		 * Every operation requiring this function have the mutex locked already:
+		 * with mutex_lock(&data->bmi323.mutex);
+		 */
 
-		// this was done already in runtime_sleep function.
+		// recover from a bad state if it was left that way on reuntime_suspend
 		if ((data->bmi323.flags & BMI323_FLAGS_RESET_FAILED) != 0x00U) {
 			ret = bmi323_chip_rst(&data->bmi323);
 			if (ret == 0) {
@@ -3857,7 +3793,6 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 		}
 
 bmi323_bmc150_accel_runtime_resume_terminate:
-		//mutex_unlock(&data->bmi323.mutex);
 		if (ret != 0) {
 			dev_err(dev, "bmi323 bmc150_accel_runtime_resume -EAGAIN");
 			return -EAGAIN;
@@ -3865,7 +3800,7 @@ bmi323_bmc150_accel_runtime_resume_terminate:
 		
 		// datasheet say "Start-up time": suspend to high performance mode is typecally 30ms, let's sleep a bit longer to revent issues...
 		dev_err(dev, "mbi323 sleeping 32ms...");
-		msleep_interruptible(32);
+		msleep_interruptible(31);
 		dev_err(dev, "bmi323 device ready!");
 
 		return 0;
