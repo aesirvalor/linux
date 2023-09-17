@@ -3558,7 +3558,7 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	if (data->bmi323.irq > 0) {
 		dev_info(data->bmi323.dev, "IRQ pin reported as connected: %d", data->bmi323.irq);
 
-		irq_desc = irq_get_irq_data(irq);
+		irq_desc = irq_get_irq_data(data->bmi323.irq);
 		if (!irq_desc) {
 			dev_err(dev, "Could not find IRQ %d. ignoring it.\n", data->bmi323.irq);
 			goto bmi323_iio_init_missing_irq_pin;
