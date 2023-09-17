@@ -3560,7 +3560,7 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 
 		irq_desc = irq_get_irq_data(data->bmi323.irq);
 		if (!irq_desc) {
-			dev_err(dev, "Could not find IRQ %d. ignoring it.\n", data->bmi323.irq);
+			dev_err(data->bmi323.dev, "Could not find IRQ %d. ignoring it.\n", data->bmi323.irq);
 			goto bmi323_iio_init_missing_irq_pin;
 		}
 	}
