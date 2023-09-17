@@ -169,26 +169,31 @@ static const struct bmi323_scale_accel_info {
 	u8 hw_val;
 	int val;
 	int val2;
+	int ret_type;
 } bmi323_accel_scale_map[] = {
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_2_VAL << (u16)4,
-		.val = 1,
-		.val2 = 9160156,
+		.val = 0,
+		.val2 = 598,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO;
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_4_VAL << (u16)4,
-		.val = 3,
-		.val2 = 8320312,
+		.val = 0,
+		.val2 = 1196,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO;
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_8_VAL << (u16)4,
-		.val = 7,
-		.val2 = 6640624,
+		.val = 0,
+		.val2 = 2392,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO;
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_16_VAL << (u16)4,
-		.val = 15,
-		.val2 = 3281248,
+		.val = 0,
+		.val2 = 4785,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO;
 	},
 };
 
@@ -196,31 +201,37 @@ static const struct bmi323_scale_gyro_info {
 	u8 hw_val;
 	int val;
 	int val2;
+	int ret_type;
 } bmi323_gyro_scale_map[] = {
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
 		.val = 0,
-		.val2 = 66,
+		.val2 = 66545,
+		.ret_type = IIO_VAL_INT_PLUS_NANO;
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_250_VAL << (u16)4,
 		.val = 0,
-		.val2 = 133,
+		.val2 = 133090,
+		.ret_type = IIO_VAL_INT_PLUS_NANO;
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_500_VAL << (u16)4,
 		.val = 0,
-		.val2 = 266,
+		.val2 = 266181,
+		.ret_type = IIO_VAL_INT_PLUS_NANO;
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_1000_VAL << (u16)4,
 		.val = 0,
-		.val2 = 532,
+		.val2 = 532362,
+		.ret_type = IIO_VAL_INT_PLUS_NANO;
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4,
 		.val = 0,
-		.val2 = 1065,
+		.val2 = 1064724,
+		.ret_type = IIO_VAL_INT_PLUS_NANO;
 	},
 };
 
@@ -2856,7 +2867,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
-							return IIO_VAL_INT_PLUS_NANO;
+							return bmi323_accel_scale_map[s].ret_type;
 						}
 					}
 
@@ -2887,7 +2898,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 
 							//bmi323_set_power_state(&data->bmi323, false);
 							mutex_unlock(&data->bmi323.mutex);
-							return IIO_VAL_INT_PLUS_MICRO;
+							return bmi323_gyro_scale_map[s].ret_type;
 						}
 					}
 
