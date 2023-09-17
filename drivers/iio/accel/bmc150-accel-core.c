@@ -3758,7 +3758,7 @@ bmi323_bmc150_accel_resume_terminate:
 		 * datasheet says "Start-up time": suspend to high performance mode is tipically 30ms,
 		 * let's sleep a bit longer to prevent issues and give time to the sensor to pick up the first reading...
 		 */
-		msleep_interruptible(32);
+		msleep_interruptible(64);
 
 		return 0;
 	}
