@@ -3688,7 +3688,7 @@ static int bmc150_accel_suspend(struct device *dev)
 	int ret;
 
 	if (data->dev_type == BMI323) {
-		dev_warn(dev, "bmi323 suspending driver...");
+		//dev_warn(dev, "bmi323 suspending driver...");
 		
 		// here push the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
 		mutex_unlock(&data->bmi323.mutex);
@@ -3718,7 +3718,7 @@ static int bmc150_accel_resume(struct device *dev)
 	int ret;
 
 	if (data->dev_type == BMI323) {
-		dev_warn(dev, "bmi323 resuming driver...");
+		//dev_warn(dev, "bmi323 resuming driver...");
 
 		// here pop the register GYRO & ACCEL configuration and issue a reset so that chip goes to sleep mode (the default one after a reset)
 		mutex_lock(&data->bmi323.mutex);
@@ -3784,7 +3784,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 	int ret = 0;
 
 	if (data->dev_type == BMI323) {
-		dev_warn(dev, "bmi323 suspending runtime...");
+		//dev_warn(dev, "bmi323 suspending runtime...");
 		
 		/*
 		 * Every operation requiring this function have the mutex locked already:
@@ -3817,7 +3817,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 	int sleep_val;
 
 	if (data->dev_type == BMI323) {
-		dev_warn(dev, "bmi323 resuming runtime...");
+		//dev_warn(dev, "bmi323 resuming runtime...");
 
 		/*
 		 * Every operation requiring this function have the mutex locked already:
@@ -3859,9 +3859,7 @@ bmi323_bmc150_accel_runtime_resume_terminate:
 		}
 		
 		// datasheet say "Start-up time": suspend to high performance mode is typecally 30ms, let's sleep a bit longer to revent issues...
-		dev_err(dev, "mbi323 sleeping 32ms...");
-		msleep_interruptible(31);
-		dev_err(dev, "bmi323 device ready!");
+		msleep_interruptible(64);
 
 		return 0;
 	}
