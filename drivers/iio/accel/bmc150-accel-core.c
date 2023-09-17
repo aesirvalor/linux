@@ -175,25 +175,25 @@ static const struct bmi323_scale_accel_info {
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_2_VAL << (u16)4,
 		.val = 0,
 		.val2 = 598,
-		.ret_type = IIO_VAL_INT_PLUS_MICRO;
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_4_VAL << (u16)4,
 		.val = 0,
 		.val2 = 1196,
-		.ret_type = IIO_VAL_INT_PLUS_MICRO;
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_8_VAL << (u16)4,
 		.val = 0,
 		.val2 = 2392,
-		.ret_type = IIO_VAL_INT_PLUS_MICRO;
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_ACCEL_RANGE_16_VAL << (u16)4,
 		.val = 0,
 		.val2 = 4785,
-		.ret_type = IIO_VAL_INT_PLUS_MICRO;
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
 	},
 };
 
@@ -207,31 +207,31 @@ static const struct bmi323_scale_gyro_info {
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_125_VAL << (u16)4,
 		.val = 0,
 		.val2 = 66545,
-		.ret_type = IIO_VAL_INT_PLUS_NANO;
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_250_VAL << (u16)4,
 		.val = 0,
 		.val2 = 133090,
-		.ret_type = IIO_VAL_INT_PLUS_NANO;
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_500_VAL << (u16)4,
 		.val = 0,
 		.val2 = 266181,
-		.ret_type = IIO_VAL_INT_PLUS_NANO;
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_1000_VAL << (u16)4,
 		.val = 0,
 		.val2 = 532362,
-		.ret_type = IIO_VAL_INT_PLUS_NANO;
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 	{
 		.hw_val = (u16)BMC150_BMI323_GYRO_RANGE_2000_VAL << (u16)4,
 		.val = 0,
 		.val2 = 1064724,
-		.ret_type = IIO_VAL_INT_PLUS_NANO;
+		.ret_type = IIO_VAL_INT_PLUS_NANO,
 	},
 };
 
