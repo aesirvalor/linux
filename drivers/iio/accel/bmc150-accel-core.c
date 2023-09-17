@@ -2684,11 +2684,7 @@ int bmi323_chip_rst(struct bmi323_private_data *bmi323) {
 	}
 
 	if ((sensor_status & cpu_to_le16((u16)0x00FFU)) != cpu_to_le16((u16)0x0001U)) {
-		if (bmi323->i2c_client != NULL) {
-			dev_err(&bmi323->i2c_client->dev, "bmi323: sensor_status incorrect: %d; sensor_status = 0x%04x", ret, sensor_status);
-		} else if (bmi323->spi_client != NULL) {
-			dev_err(&bmi323->spi_client->dev, "bmi323: sensor_status incorrect: %d; sensor_status = 0x%04x", ret, sensor_status);
-		}
+		dev_err(bmi323->dev, "bmi323: sensor_status incorrect: %d; sensor_status = 0x%04x", ret, sensor_status);
 
 		// initialization error
 		return -6;
@@ -2736,6 +2732,12 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 	u16 raw_read = 0x8000;
 
 	mutex_lock(&data->bmi323.mutex);
+
+	if ((data->bmi323.flags & BMI323_FLAGS_RESET_FAILED) != 0x00U) {
+		dev_err(data->bmi323.dev, "bmi323 error: device has not being woken up correctly.");
+		mutex_unlock(&data->bmi323.mutex);
+		return -EBUSY;
+	}
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
@@ -3097,15 +3099,20 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 	int ret = -EINVAL, was_sleep_modified = -1;
 
 	if (iio_buffer_enabled(indio_dev)) {
-		printk(KERN_WARNING "bmi323 buffer is enabled now and iio_buffer_enabled returned true");
+		dev_warn(data->bmi323.dev, "bmi323 buffer is enabled now and iio_buffer_enabled returned true");
 		//return -EBUSY;
 	} else {
 
-		printk(KERN_WARNING "bmi323 buffer is NOT enabled now and iio_buffer_enabled returned false");
+		dev_warn(data->bmi323.dev, "bmi323 buffer is NOT enabled now and iio_buffer_enabled returned false");
 	}
-				
 
 	mutex_lock(&data->bmi323.mutex);
+
+	if ((data->bmi323.flags & BMI323_FLAGS_RESET_FAILED) != 0x00U) {
+		dev_err(data->bmi323.dev, "bmi323 error: device has not being woken up correctly.");
+		mutex_unlock(&data->bmi323.mutex);
+		return -EBUSY;
+	}
 
 	switch (mask) {
 	case IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY:
@@ -3693,6 +3700,7 @@ static int bmc150_accel_suspend(struct device *dev)
 bmi323_bmc150_accel_suspend_terminate:
 		mutex_unlock(&data->bmi323.mutex);
 		if (ret != 0) {
+			data->bmi323.flags |= BMI323_FLAGS_RESET_FAILED;
 			return -EAGAIN;
 		}
 		
@@ -3720,7 +3728,14 @@ static int bmc150_accel_resume(struct device *dev)
 		mutex_lock(&data->bmi323.mutex);
 
 		// this was done already in runtime_sleep function.
-		ret = bmi323_chip_rst(&data->bmi323);
+		if ((data->bmi323.flags & BMI323_FLAGS_RESET_FAILED) != 0x00U) {
+			ret = bmi323_chip_rst(&data->bmi323);
+			if (ret == 0) {
+				data->bmi323.flags &= ~BMI323_FLAGS_RESET_FAILED;
+			} else {
+				goto bmi323_bmc150_accel_runtime_resume_terminate;
+			}
+		}
 		
 		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
@@ -3789,6 +3804,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
 bmi323_bmc150_accel_runtime_suspend_terminate:
 		//mutex_unlock(&data->bmi323.mutex);
 		if (ret != 0) {
+			data->bmi323.flags |= BMI323_FLAGS_RESET_FAILED;
 			return -EAGAIN;
 		}
 		
@@ -3819,7 +3835,14 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 		//mutex_lock(&data->bmi323.mutex);
 
 		// this was done already in runtime_sleep function.
-		ret = bmi323_chip_rst(&data->bmi323);
+		if ((data->bmi323.flags & BMI323_FLAGS_RESET_FAILED) != 0x00U) {
+			ret = bmi323_chip_rst(&data->bmi323);
+			if (ret == 0) {
+				data->bmi323.flags &= ~BMI323_FLAGS_RESET_FAILED;
+			} else {
+				goto bmi323_bmc150_accel_runtime_resume_terminate;
+			}
+		}
 		
 		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
