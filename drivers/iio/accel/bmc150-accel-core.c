@@ -3529,7 +3529,7 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 		return -2;
 	}
 
-	pm_runtime_mark_last_busy(data->bmi323.dev);
+	//pm_runtime_mark_last_busy(data->bmi323.dev);
 
 	indio_dev->channels = bmi323_channels;
 	indio_dev->num_channels = ARRAY_SIZE(bmi323_channels);
@@ -3684,6 +3684,11 @@ static int bmc150_accel_resume(struct device *dev)
 			}
 		}
 		
+		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_FIFO_CONF_REG, data->bmi323.fifo_conf_reg_value);
+		if (ret != 0) {
+			goto bmi323_bmc150_accel_resume_terminate;
+		}
+
 		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
 			goto bmi323_bmc150_accel_resume_terminate;
@@ -3778,6 +3783,12 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 			} else {
 				goto bmi323_bmc150_accel_runtime_resume_terminate;
 			}
+		}
+
+		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_FIFO_CONF_REG, data->bmi323.fifo_conf_reg_value);
+		if (ret != 0) {
+			dev_err(dev, "bmi323 writing to GYR_CONF register failed");
+			goto bmi323_bmc150_accel_runtime_resume_terminate;
 		}
 		
 		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
