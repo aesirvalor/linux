@@ -224,6 +224,168 @@ static const struct bmi323_scale_gyro_info {
 	},
 };
 
+/*
+ * this reflects the frequency map that is following.
+ * For each index i of that map index i*2 and i*2+1 of of this
+ * holds ODR/2 and ODR/4
+ */ 
+static const struct bmi323_3db_freq_cutoff_accel_info {
+	int val;
+	int val2;
+	int ret_type;
+} bmi323_accel_3db_freq_cutoff[] = {
+	{
+		.val = 0,
+		.val2 = 390615,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 1953075, // TODO: check if this gets reported correctly...
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 781300,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 390650,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1,
+		.val2 = 562500,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 78125,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 3,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1,
+		.val2 = 500000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 6,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 3,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 12,
+		.val2 = 500000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 6,
+		.val2 = 250000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 25,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 12,
+		.val2 = 500000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 50,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 25,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 100,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 50,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 200,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 100,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 400,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 200,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 800,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 400,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1600,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 800,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1600,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 800,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 3200,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1600,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+};
+
 static const struct bmi323_freq_accel_info {
 	u16 hw_val;
 	int val;
@@ -375,6 +537,163 @@ static const struct bmi323_freq_gyro_info {
 		.hw_val = BMC150_BMI323_GYRO_ODR_6400_VAL,
 		.val = 6400,
 		.val2 = 0,
+	},
+};
+
+static const struct bmi323_3db_freq_cutoff_gyro_info {
+	int val;
+	int val2;
+	int ret_type;
+} bmi323_gyro_3db_freq_cutoff[] = {
+	{
+		.val = 0,
+		.val2 = 390615,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 1953075, // TODO: check if this gets reported correctly...
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 781300,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 390650,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1,
+		.val2 = 562500,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 0,
+		.val2 = 78125,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 3,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1,
+		.val2 = 500000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 6,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 3,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 12,
+		.val2 = 500000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 6,
+		.val2 = 250000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 25,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 12,
+		.val2 = 500000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 50,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 25,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 100,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 50,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 200,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 100,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 400,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 200,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 800,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 400,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1600,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 800,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1600,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 800,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 3200,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
+	},
+	{
+		.val = 1600,
+		.val2 = 000000,
+		.ret_type = IIO_VAL_INT_PLUS_MICRO,
 	},
 };
 
@@ -2318,7 +2637,7 @@ int bmi323_chip_rst(struct bmi323_private_data *bmi323) {
 		return -1;
 	}
 
-	/* wait the specified amount of time... better safe than sorry, no? :) */
+	/* wait the specified amount of time... I agree with the bmc150 module: better safe than sorry. */
 	msleep(5);
 
 	// if the device is connected over SPI a dummy read is to be performed once after each reset
@@ -2575,7 +2894,70 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 		}
 	case IIO_CHAN_INFO_LOW_PASS_FILTER_3DB_FREQUENCY:
 		switch (chan->type) {
-			
+			case IIO_ACCEL:
+				{
+					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
+					if (was_sleep_modified != 0) {
+						ret = was_sleep_modified;
+						goto bmi323_read_raw_error_power;
+					}
+
+					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_ACC_CONF_REG, &raw_read);
+					if (ret != 0) {
+						goto bmi323_read_raw_error;
+					}
+
+					u8* le_raw_read = (u8*)&raw_read;
+					for (int s = 0; s < ARRAY_SIZE(bmi323_accel_odr_map); ++s) {
+						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_accel_odr_map[s].hw_val)) {
+							/*
+							 * from tha datasheed: -3dB cut-off frequency can be configured with the bit 7 of GYR_confm,
+							 * also called acc_bw that can either be 0 or 1, where 1 means odr/4 and 0 means odr/2
+							 */
+							*val = bmi323_accel_3db_freq_cutoff[(s * 2) + ((((le_raw_read[0]) & ((u16)0x08U)) == (u16)0x0000U) ? 0 : 1)].val;
+							*val2 = bmi323_accel_3db_freq_cutoff[(s * 2) + ((((le_raw_read[0]) & ((u16)0x08U)) == (u16)0x0000U) ? 0 : 1)].val2;
+
+							bmi323_set_power_state(&data->bmi323, false);
+							mutex_unlock(&data->bmi323.mutex);
+							return IIO_VAL_INT_PLUS_MICRO;
+						}
+					}
+
+					ret = -EINVAL;
+					goto bmi323_read_raw_error;
+				}
+			case IIO_ANGL_VEL:
+				{
+					was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
+					if (was_sleep_modified != 0) {
+						ret = was_sleep_modified;
+						goto bmi323_read_raw_error_power;
+					}
+
+					ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, &raw_read);
+					if (ret != 0) {
+						goto bmi323_read_raw_error;
+					}
+
+					u8* le_raw_read = (u8*)&raw_read;
+					for (int s = 0; s < ARRAY_SIZE(bmi323_gyro_odr_map); ++s) {
+						if (((le_raw_read[0]) & ((u16)0x0FU)) == (bmi323_gyro_odr_map[s].hw_val)) {
+							/*
+							 * from tha datasheed: -3dB cut-off frequency can be configured with the bit 7 of GYR_confm,
+							 * also called acc_bw that can either be 0 or 1, where 1 means odr/4 and 0 means odr/2
+							 */
+							*val = bmi323_gyro_3db_freq_cutoff[(s * 2) + ((((le_raw_read[0]) & ((u16)0x08U)) == (u16)0x0000U) ? 0 : 1)].val;
+							*val2 = bmi323_gyro_3db_freq_cutoff[(s * 2) + ((((le_raw_read[0]) & ((u16)0x08U)) == (u16)0x0000U) ? 0 : 1)].val2;
+
+							bmi323_set_power_state(&data->bmi323, false);
+							mutex_unlock(&data->bmi323.mutex);
+							return IIO_VAL_INT_PLUS_MICRO;
+						}
+					}
+
+					ret = -EINVAL;
+					goto bmi323_read_raw_error;
+				}
 			default:
 			{
 				ret = -EINVAL;
