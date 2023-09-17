@@ -252,7 +252,7 @@ static const struct bmi323_3db_freq_cutoff_accel_info {
 	},
 	{
 		.val = 0,
-		.val2 = 1953075, // TODO: check if this gets reported correctly...
+		.val2 = 195308,
 		.ret_type = IIO_VAL_INT_PLUS_MICRO,
 	},
 	{
@@ -3187,6 +3187,8 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 					}
 				}
 
+				dev_warn(data->bmi323.dev, "bmi323 error: accel scale val=%d,val2=%d unavailable. Ignoring", val, val2);
+
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
 			case IIO_ANGL_VEL:
@@ -3212,7 +3214,9 @@ static int bmi323_write_raw(struct iio_dev *indio_dev,
 						return 0;
 					}
 				}
-				
+
+				dev_warn(data->bmi323.dev, "bmi323 error: gyro scale val=%d,val2=%d unavailable. Ignoring", val, val2);
+
 				ret = -EINVAL;
 				goto bmi323_write_raw_error;
 
