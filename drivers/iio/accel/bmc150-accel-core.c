@@ -709,18 +709,18 @@ static const struct bmi323_3db_freq_cutoff_gyro_info {
 };
 
 static const int bmi323_accel_scales[] = {
-	1, 9160156,
-	3, 8320312,
-	7, 6640624,
-	15, 3281248,
+	0, 598,
+	0, 1196,
+	0, 2392,
+	0, 4785,
 };
 
 static const int bmi323_gyro_scales[] = {
-	0, 66,
-	0, 133,
-	0, 266,
-	0, 532,
-	0, 1065,
+	0, 66545,
+	0, 133090,
+	0, 266181,
+	0, 532362,
+	0, 1064724,
 };
 
 static const int bmi323_sample_freqs[] = {
@@ -2860,16 +2860,16 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				return IIO_VAL_INT;
 
 			case IIO_ANGL_VEL:
-				ret = iio_device_claim_direct_mode(indio_dev);
-				if (ret != 0) {
-					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_ANGL_VEL iio_device_claim_direct_mode returned %d\n", ret);
-					goto bmi323_read_raw_error;
-				}
-
 				was_sleep_modified = bmi323_set_power_state(&data->bmi323, true);
 				if (was_sleep_modified != 0) {
 					ret = was_sleep_modified;
 					goto bmi323_read_raw_error_power;
+				}
+
+				ret = iio_device_claim_direct_mode(indio_dev);
+				if (ret != 0) {
+					printk(KERN_CRIT "bmc150 bmi323_read_raw IIO_ANGL_VEL iio_device_claim_direct_mode returned %d\n", ret);
+					goto bmi323_read_raw_error;
 				}
 
 				ret = bmi323_read_u16(&data->bmi323, BMC150_BMI323_DATA_BASE_REG + (u8)(chan->scan_index), &raw_read);
@@ -2883,6 +2883,7 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 				bmi323_set_power_state(&data->bmi323, false);
 				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT;
+
 			default:
 				goto bmi323_read_raw_error;
 			}
@@ -2891,12 +2892,11 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 		{
 			switch (chan->type) {
 			case IIO_TEMP:
-				{
 				*val = BMC150_BMI323_TEMPER_CENTER_VAL;
 				*val2 = 0;
 				mutex_unlock(&data->bmi323.mutex);
 				return IIO_VAL_INT;
-				}
+
 			default:
 				ret = -EINVAL;
 				goto bmi323_read_raw_error;
@@ -2958,9 +2958,9 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							 * from tha datasheed: -3dB cut-off frequency can be configured with the bit 7 of GYR_confm,
 							 * also called acc_bw that can either be 0 or 1, where 1 means odr/4 and 0 means odr/2
 							 */
-							int freq_adj = (((le_raw_read[0]) & ((u8)0x80U)) == (u8)0x00U) ? 0 : 1;
-							*val = bmi323_accel_3db_freq_cutoff[(s * 2) + freq_adj].val;
-							*val2 = bmi323_accel_3db_freq_cutoff[(s * 2) + freq_adj].val2;
+							int freq_adj_idx = (((le_raw_read[0]) & ((u8)0x80U)) == (u8)0x00U) ? (s * 2) + 0 : (s * 2) + 1;
+							*val = bmi323_accel_3db_freq_cutoff[freq_adj_idx].val;
+							*val2 = bmi323_accel_3db_freq_cutoff[freq_adj_idx].val2;
 
 							mutex_unlock(&data->bmi323.mutex);
 							return IIO_VAL_INT_PLUS_MICRO;
@@ -2979,12 +2979,12 @@ static int bmi323_read_raw(struct iio_dev *indio_dev,
 							 * from tha datasheed: -3dB cut-off frequency can be configured with the bit 7 of GYR_confm,
 							 * also called acc_bw that can either be 0 or 1, where 1 means odr/4 and 0 means odr/2
 							 */
-							int freq_adj = (((le_raw_read[0]) & ((u8)0x80U)) == (u8)0x0000U) ? 0 : 1;
-							*val = bmi323_gyro_3db_freq_cutoff[(s * 2) + freq_adj].val;
-							*val2 = bmi323_gyro_3db_freq_cutoff[(s * 2) + freq_adj].val2;
+							int freq_adj_idx = (((le_raw_read[0]) & ((u8)0x80U)) == (u8)0x0000U) ? (s * 2) + 0 : (s * 2) + 1;
+							*val = bmi323_gyro_3db_freq_cutoff[freq_adj_idx].val;
+							*val2 = bmi323_gyro_3db_freq_cutoff[freq_adj_idx].val2;
 
 							mutex_unlock(&data->bmi323.mutex);
-							return IIO_VAL_INT_PLUS_MICRO;
+							return bmi323_gyro_3db_freq_cutoff[freq_adj_idx].ret_type;
 						}
 					}
 
@@ -3245,12 +3245,12 @@ static int bmi323_read_avail(struct iio_dev *indio_dev,
 	case IIO_CHAN_INFO_SCALE:
 		switch (chan->type) {
 		case IIO_ACCEL:
-			*type = IIO_VAL_INT_PLUS_NANO;
+			*type = IIO_VAL_INT_PLUS_MICRO;
 			*vals = bmi323_accel_scales;
 			*length = ARRAY_SIZE(bmi323_accel_scales);
 			return IIO_AVAIL_LIST;
 		case IIO_ANGL_VEL:
-			*type = IIO_VAL_INT_PLUS_MICRO;
+			*type = IIO_VAL_INT_PLUS_NANO;
 			*vals = bmi323_gyro_scales;
 			*length = ARRAY_SIZE(bmi323_gyro_scales);
 			return IIO_AVAIL_LIST;
@@ -3486,6 +3486,7 @@ static const unsigned long bmi323_accel_scan_masks[] = {
 int bmi323_iio_init(struct iio_dev *indio_dev) {
 	const struct iio_dev_attr **fifo_attrs = NULL;
 	struct bmc150_accel_data *data = iio_priv(indio_dev);
+	struct irq_data *irq_desc = NULL;
 
 	if (data->bmi323.i2c_client != NULL) {
 		data->bmi323.dev = &data->bmi323.i2c_client->dev;
@@ -3554,18 +3555,26 @@ int bmi323_iio_init(struct iio_dev *indio_dev) {
 	}
 	*/
 
+	if (data->bmi323.irq > 0) {
+		dev_info(data->bmi323.dev, "IRQ pin reported as connected: %d", data->bmi323.irq);
+
+		irq_desc = irq_get_irq_data(irq);
+		if (!irq_desc) {
+			dev_err(dev, "Could not find IRQ %d. ignoring it.\n", data->bmi323.irq);
+			goto bmi323_iio_init_missing_irq_pin;
+		}
+	}
+	
+bmi323_iio_init_missing_irq_pin:
+	dev_warn(data->bmi323.dev, "IRQ pin NOT connected", data->bmi323.irq);
+
+bmi323_iio_init_common_irq_and_not_irq:
 	ret = iio_triggered_buffer_setup(indio_dev, NULL,
 					  iio_bmi323_trigger_h,
 					  &bmi323_buffer_ops);
 	if (ret < 0) {
 		dev_err(data->bmi323.dev, "Failed: iio triggered buffer setup\n");
 		goto bmi323_iio_init_err_trigger_unregister;
-	}
-
-	if (data->bmi323.irq > 0) {
-		dev_err(data->bmi323.dev, "IRQ pin connected: %d :)", data->bmi323.irq);
-	} else {
-		dev_err(data->bmi323.dev, "IRQ pin NOT connected: %d :(", data->bmi323.irq);
 	}
 
 	ret = pm_runtime_set_active(data->bmi323.dev);
@@ -3790,7 +3799,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
 			dev_err(dev, "bmi323 writing to GYR_CONF register failed");
 			goto bmi323_bmc150_accel_runtime_resume_terminate;
 		}
-		
+
 		ret = bmi323_write_u16(&data->bmi323, BMC150_BMI323_GYR_CONF_REG, data->bmi323.gyr_conf_reg_value);
 		if (ret != 0) {
 			dev_err(dev, "bmi323 writing to GYR_CONF register failed");
