@@ -3621,6 +3621,14 @@ F:	Documentation/devicetree/bindings/iio/imu/bosch,bma400.yaml
 F:	drivers/iio/imu/bmi323/
 
 BPF JIT for ARM
+M:	Russell King <linux@armlinux.org.uk>
+M:	Puranjay Mohan <puranjay12@gmail.com>
+L:	bpf@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/iio/imu/bosch,bma400.yaml
+F:	drivers/iio/imu/bmi323/
+
+BPF JIT for ARM
 M:	Shubham Bansal <illusionist.neo@gmail.com>
 L:	bpf@vger.kernel.org
 S:	Odd Fixes
