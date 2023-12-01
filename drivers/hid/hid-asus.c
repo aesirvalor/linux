@@ -335,6 +335,16 @@ static int asus_raw_event(struct hid_device *hdev,
 	if (drvdata->battery && data[0] == BATTERY_REPORT_ID)
 		return asus_report_battery(drvdata, data, size);
 
+	// TODO: remove after debugging
+	// if (data[0] == 0x5a || data[0] == 0x5d || data[0] == 0x5e){
+	// 	 for (int i = 0; i < size; i++) {
+	// 		if (i == 0)
+	// 			printk(KERN_INFO "GOT: %02x,", data[i]);
+	// 		else
+	// 			printk(KERN_CONT "%02x,", data[i]);
+	// 	 }
+	// }
+
 	if (drvdata->tp && data[0] == INPUT_REPORT_ID)
 		return asus_report_input(drvdata, data, size);
 
@@ -1044,6 +1054,144 @@ static ssize_t gamepad_mode_store(struct device *raw_dev, struct device_attribut
 
 DEVICE_ATTR_RW(gamepad_mode);
 
+/* ROG Ally deadzones */
+static ssize_t __gamepad_set_deadzones(struct device *raw_dev, enum ally_analogue analogue, const char *buf) {
+	struct asus_rog_ally *rog_ally = __rog_ally_data(raw_dev);
+	struct hid_device *hdev = to_hid_device(raw_dev);
+	int ret, cmd, side, is_js;
+	u32 inner, outer;
+	u8 *hidbuf;
+
+	if (sscanf(buf, "%d %d", &inner, &outer) != 2)
+		return -EINVAL;
+
+	if (inner > 64 || outer > 64 || inner > outer)
+		return -EINVAL;
+
+	is_js = !(analogue <= ally_analogue_joystick_right);
+	side = analogue == ally_analogue_joystick_right
+		|| analogue == ally_analogue_trigger_right ? 2 : 0;
+	cmd = is_js ? ally_gamepad_cmd_set_js_dz : ally_gamepad_cmd_set_tr_dz;
+
+	rog_ally->deadzones[is_js][side] = inner;
+	rog_ally->deadzones[is_js][side+1] = outer;
+
+	ret = __gamepad_check_ready(hdev);
+	if (ret < 0)
+		return ret;
+
+	hidbuf = kzalloc(FEATURE_ROG_ALLY_REPORT_SIZE, GFP_KERNEL);
+	if (!hidbuf)
+		return -ENOMEM;
+
+	hidbuf[0] = FEATURE_KBD_REPORT_ID;
+	hidbuf[1] = 0xD1;
+	hidbuf[2] = cmd;
+	hidbuf[3] = 0x04; // length
+	hidbuf[4] = rog_ally->deadzones[is_js][0];
+	hidbuf[5] = rog_ally->deadzones[is_js][1];
+	hidbuf[6] = rog_ally->deadzones[is_js][3];
+	hidbuf[7] = rog_ally->deadzones[is_js][4];
+
+	ret = asus_kbd_set_report(hdev, hidbuf, FEATURE_ROG_ALLY_REPORT_SIZE);
+	kfree(hidbuf);
+	return ret;
+}
+
+static ssize_t joystick_deadzone_index_show(struct device *raw_dev, struct device_attribute *attr, char *buf) {
+	return sysfs_emit(buf, "inner outer\n");
+}
+
+static ssize_t joystick_left_deadzone_show(struct device *raw_dev, struct device_attribute *attr, char *buf) {
+	struct asus_rog_ally *rog_ally = __rog_ally_data(raw_dev);
+	return sysfs_emit(buf, "%d %d\n", rog_ally->deadzones[0][0], rog_ally->deadzones[0][1]);
+}
+
+static ssize_t joystick_left_deadzone_store(struct device *raw_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	int ret = __gamepad_set_deadzones(raw_dev, ally_analogue_joystick_left, buf);
+	if (ret < 0)
+		return ret;
+	return count;
+}
+
+static ssize_t joystick_right_deadzone_show(struct device *raw_dev, struct device_attribute *attr, char *buf) {
+	struct asus_rog_ally *rog_ally = __rog_ally_data(raw_dev);
+	return sysfs_emit(buf, "%d %d\n", rog_ally->deadzones[0][2], rog_ally->deadzones[0][3]);
+}
+
+static ssize_t joystick_right_deadzone_store(struct device *raw_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	int ret = __gamepad_set_deadzones(raw_dev, ally_analogue_joystick_right, buf);
+	if (ret < 0)
+		return ret;
+	return count;
+}
+
+static ssize_t trigger_left_deadzone_show(struct device *raw_dev, struct device_attribute *attr, char *buf) {
+	struct asus_rog_ally *rog_ally = __rog_ally_data(raw_dev);
+	return sysfs_emit(buf, "%d %d\n", rog_ally->deadzones[1][0], rog_ally->deadzones[1][1]);
+}
+
+static ssize_t trigger_left_deadzone_store(struct device *raw_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	int ret = __gamepad_set_deadzones(raw_dev, ally_analogue_trigger_left, buf);
+	if (ret < 0)
+		return ret;
+	return count;
+}
+
+static ssize_t trigger_right_deadzone_show(struct device *raw_dev, struct device_attribute *attr, char *buf) {
+	struct asus_rog_ally *rog_ally = __rog_ally_data(raw_dev);
+	return sysfs_emit(buf, "%d %d\n", rog_ally->deadzones[1][2], rog_ally->deadzones[1][3]);
+}
+
+static ssize_t trigger_right_deadzone_store(struct device *raw_dev, struct device_attribute *attr, const char *buf, size_t count) {
+	int ret = __gamepad_set_deadzones(raw_dev, ally_analogue_trigger_right, buf);
+	if (ret < 0)
+		return ret;
+	return count;
+}
+
+ALLY_DEVICE_ATTR_RO(joystick_deadzone_index, index);
+ALLY_DEVICE_ATTR_RW(joystick_left_deadzone, deadzone);
+ALLY_DEVICE_ATTR_RW(joystick_right_deadzone, deadzone);
+ALLY_DEVICE_ATTR_RW(trigger_left_deadzone, deadzone);
+ALLY_DEVICE_ATTR_RW(trigger_right_deadzone, deadzone);
+
+static struct attribute *gamepad_joystick_left_attrs[] = {
+	&dev_attr_joystick_left_deadzone.attr,
+	NULL
+};
+static const struct attribute_group ally_controller_joystick_left_attr_group = {
+	.name = "joystick_left",
+	.attrs = gamepad_joystick_left_attrs,
+};
+
+static struct attribute *gamepad_joystick_right_attrs[] = {
+	&dev_attr_joystick_right_deadzone.attr,
+	NULL
+};
+static const struct attribute_group ally_controller_joystick_right_attr_group = {
+	.name = "joystick_right",
+	.attrs = gamepad_joystick_right_attrs,
+};
+
+static struct attribute *gamepad_trigger_left_attrs[] = {
+	&dev_attr_trigger_left_deadzone.attr,
+	NULL
+};
+static const struct attribute_group ally_controller_trigger_left_attr_group = {
+	.name = "trigger_left",
+	.attrs = gamepad_trigger_left_attrs,
+};
+
+static struct attribute *gamepad_trigger_right_attrs[] = {
+	&dev_attr_trigger_right_deadzone.attr,
+	NULL
+};
+static const struct attribute_group ally_controller_trigger_right_attr_group = {
+	.name = "trigger_right",
+	.attrs = gamepad_trigger_right_attrs,
+};
+
 static struct attribute *gamepad_device_attrs[] = {
 	&dev_attr_gamepad_mode.attr,
 	NULL
@@ -1051,6 +1199,15 @@ static struct attribute *gamepad_device_attrs[] = {
 
 static const struct attribute_group ally_controller_attr_group = {
 	.attrs = gamepad_device_attrs,
+};
+
+static const struct attribute_group *gamepad_device_attr_groups[] = {
+	&ally_controller_attr_group,
+	&ally_controller_joystick_left_attr_group,
+	&ally_controller_joystick_right_attr_group,
+	&ally_controller_trigger_left_attr_group,
+	&ally_controller_trigger_right_attr_group,
+	NULL
 };
 
 static int asus_start_multitouch(struct hid_device *hdev)
@@ -1209,14 +1366,17 @@ static int asus_probe(struct hid_device *hdev, const struct hid_device_id *id)
 					goto err_stop_hw;
 				}
 				drvdata->rog_ally_data->mode = ally_gamepad_mode_game;
+				drvdata->rog_ally_data->deadzones[0][1] = 64;
+				drvdata->rog_ally_data->deadzones[0][3] = 64;
+				drvdata->rog_ally_data->deadzones[1][1] = 64;
+				drvdata->rog_ally_data->deadzones[1][3] = 64;
 
 				ret = __gamepad_set_mode(&hdev->dev, ally_gamepad_mode_game);
 				if (ret < 0)
 					return ret;
 			}
 
-			ret = sysfs_create_group(&hdev->dev.kobj, &ally_controller_attr_group);
-			if (ret != 0)
+			if (sysfs_create_groups(&hdev->dev.kobj, gamepad_device_attr_groups))
 				goto err_stop_hw;
 		}
 	}
@@ -1272,7 +1432,7 @@ static void asus_remove(struct hid_device *hdev)
 
 	if (drvdata->rog_ally_data) {
 		__gamepad_set_mode(&hdev->dev, ally_gamepad_mode_mouse);
-		sysfs_remove_group(&hdev->dev.kobj, &ally_controller_attr_group);
+		sysfs_remove_groups(&hdev->dev.kobj, gamepad_device_attr_groups);
 	}
 
 	hid_hw_stop(hdev);
