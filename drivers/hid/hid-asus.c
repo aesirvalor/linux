@@ -23,7 +23,6 @@
 /*
  */
 
-#include <asm-generic/errno-base.h>
 #include <linux/dmi.h>
 #include <linux/hid.h>
 #include <linux/module.h>
@@ -33,7 +32,6 @@
 #include <linux/power_supply.h>
 #include <linux/leds.h>
 
-#include "hid-asus-rog.h"
 #include "hid-ids.h"
 
 MODULE_AUTHOR("Yusuke Fujimaki <usk.fujimaki@gmail.com>");
@@ -86,7 +84,6 @@ MODULE_DESCRIPTION("Asus HID Keyboard and TouchPad");
 #define QUIRK_MEDION_E1239T		BIT(10)
 #define QUIRK_ROG_NKEY_KEYBOARD		BIT(11)
 #define QUIRK_ROG_CLAYMORE_II_KEYBOARD BIT(12)
-#define QUIRK_ROG_ALLY_GAMEPAD	BIT(13)
 
 #define I2C_KEYBOARD_QUIRKS			(QUIRK_FIX_NOTEBOOK_REPORT | \
 						 QUIRK_NO_INIT_REPORTS | \
@@ -130,7 +127,6 @@ struct asus_drvdata {
 	int battery_stat;
 	bool battery_in_query;
 	unsigned long battery_next_query;
-	struct asus_rog_ally *rog_ally_data;
 };
 
 static int asus_report_battery(struct asus_drvdata *, u8 *, int);
@@ -931,76 +927,6 @@ static int asus_input_mapping(struct hid_device *hdev,
 	return 0;
 }
 
-/* ASUS ROG Ally device specific attributes */
-
-static struct asus_rog_ally* __rog_ally_data(struct device *raw_dev) {
-	struct hid_device *hdev = to_hid_device(raw_dev);
-	return ((struct asus_drvdata*)hid_get_drvdata(hdev))->rog_ally_data;
-}
-
-// TODO: general purpose request function which checks the device is ready before setting
-/* The gamepad mode also needs to be set on boot/mod-load and shutdown */
-static ssize_t __gamepad_set_mode(struct device *raw_dev, int val) {
-	struct hid_device *hdev = to_hid_device(raw_dev);
-	u8 *hidbuf;
-	int ret;
-
-	hidbuf = kzalloc(64, GFP_KERNEL);
-	if (!hidbuf)
-		return -ENOMEM;
-
-	hidbuf[0] = FEATURE_KBD_REPORT_ID;
-	hidbuf[1] = 0xD1;
-	hidbuf[2] = ally_gamepad_cmd_set_mode;
-	hidbuf[3] = 0x01;
-	hidbuf[4] = val;
-
-	ret = asus_kbd_set_report(hdev, hidbuf, 64);
-	if (ret < 0) {
-		kfree(hidbuf);
-		return ret;
-	}
-
-	kfree(hidbuf);
-	return 0;
-}
-
-static ssize_t gamepad_mode_show(struct device *raw_dev, struct device_attribute *attr, char *buf) {
-	struct asus_rog_ally *rog_ally = __rog_ally_data(raw_dev);
-	return sysfs_emit(buf, "%d\n", rog_ally->mode);
-}
-
-static ssize_t gamepad_mode_store(struct device *raw_dev, struct device_attribute *attr, const char *buf, size_t count) {
-	struct asus_rog_ally *rog_ally = __rog_ally_data(raw_dev);
-	int ret, val;
-
-	ret = kstrtoint(buf, 0, &val);
-	if (ret)
-		return ret;
-
-	if (val < ally_gamepad_mode_game || val > ally_gamepad_mode_mouse)
-		return -EINVAL;
-
-	rog_ally->mode = val;
-
-	ret = __gamepad_set_mode(raw_dev, val);
-	if (ret < 0)
-		return ret;
-
-	return count;
-}
-
-DEVICE_ATTR_RW(gamepad_mode);
-
-static struct attribute *gamepad_device_attrs[] = {
-	&dev_attr_gamepad_mode.attr,
-	NULL
-};
-
-static const struct attribute_group ally_controller_attr_group = {
-	.attrs = gamepad_device_attrs,
-};
-
 static int asus_start_multitouch(struct hid_device *hdev)
 {
 	int ret;
@@ -1137,40 +1063,6 @@ static int asus_probe(struct hid_device *hdev, const struct hid_device_id *id)
 		}
 	}
 
-	/* all ROG devices have this HID interface but we will focus on Ally for now */
-	if (drvdata->quirks & QUIRK_ROG_NKEY_KEYBOARD && hid_is_usb(hdev)) {
-		struct usb_interface *intf = to_usb_interface(hdev->dev.parent);
-
-		if (intf->altsetting->desc.bInterfaceNumber == 0) {
-			hid_info(hdev, "Setting up ROG USB interface\n");
-			/* initialise and set up USB, common to ROG */
-			// TODO:
-
-			/* initialise the Ally data */
-			if (drvdata->quirks & QUIRK_ROG_ALLY_GAMEPAD) {
-				hid_info(hdev, "Setting up ROG Ally interface\n");
-				
-				drvdata->rog_ally_data = devm_kzalloc(&hdev->dev, sizeof(*drvdata->rog_ally_data), GFP_KERNEL);
-				if (!drvdata->rog_ally_data) {
-					hid_err(hdev, "Can't alloc Asus ROG USB interface\n");
-					ret = -ENOMEM;
-					goto err_stop_hw;
-				}
-				drvdata->rog_ally_data->mode = ally_gamepad_mode_game;
-
-				ret = __gamepad_set_mode(&hdev->dev, ally_gamepad_mode_game);
-				if (ret < 0)
-					return ret;
-			}
-
-			ret = devm_device_add_group(&hdev->dev, &ally_controller_attr_group);
-			if (ret != 0) {
-				hid_err(hdev, "Asus ROG Ally [RC71L] error registering attr group: %d\n", ret);
-				goto err_stop_hw;
-			}
-		}
-	}
-
 	ret = hid_parse(hdev);
 	if (ret) {
 		hid_err(hdev, "Asus hid parse failed: %d\n", ret);
@@ -1219,9 +1111,6 @@ static void asus_remove(struct hid_device *hdev)
 
 		cancel_work_sync(&drvdata->kbd_backlight->work);
 	}
-
-	if (drvdata->rog_ally_data)
-		__gamepad_set_mode(&hdev->dev, ally_gamepad_mode_mouse);
 
 	hid_hw_stop(hdev);
 }
@@ -1356,7 +1245,7 @@ static const struct hid_device_id asus_devices[] = {
 	  QUIRK_USE_KBD_BACKLIGHT | QUIRK_ROG_NKEY_KEYBOARD },
 	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
 	    USB_DEVICE_ID_ASUSTEK_ROG_NKEY_ALLY),
-	  QUIRK_USE_KBD_BACKLIGHT | QUIRK_ROG_NKEY_KEYBOARD | QUIRK_ROG_ALLY_GAMEPAD },
+	  QUIRK_USE_KBD_BACKLIGHT | QUIRK_ROG_NKEY_KEYBOARD },
 	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
 	    USB_DEVICE_ID_ASUSTEK_ROG_CLAYMORE_II_KEYBOARD),
 	  QUIRK_ROG_CLAYMORE_II_KEYBOARD },
