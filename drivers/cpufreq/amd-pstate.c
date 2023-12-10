@@ -304,11 +304,13 @@ static int pstate_init_perf(struct amd_cpudata *cpudata)
 	 * calculated wrongly. we take the AMD_CPPC_HIGHEST_PERF(cap1) value as
 	 * the default max perf.
 	 */
+	u32 highest_perf = amd_get_highest_perf();
 	if (cpudata->hw_prefcore)
-		WRITE_ONCE(cpudata->highest_perf, AMD_PSTATE_PREFCORE_THRESHOLD);
-	else
-		WRITE_ONCE(cpudata->highest_perf, AMD_CPPC_HIGHEST_PERF(cap1));
+		highest_perf = AMD_PSTATE_PREFCORE_THRESHOLD;
+	else if (highest_perf > AMD_CPPC_HIGHEST_PERF(cap1))
+		highest_perf = AMD_CPPC_HIGHEST_PERF(cap1);
 
+	WRITE_ONCE(cpudata->highest_perf, highest_perf);
 	WRITE_ONCE(cpudata->max_limit_perf, cpudata->highest_perf);
 	WRITE_ONCE(cpudata->min_limit_perf, AMD_CPPC_LOWEST_PERF(cap1));
 	WRITE_ONCE(cpudata->nominal_perf, AMD_CPPC_NOMINAL_PERF(cap1));
@@ -327,13 +329,14 @@ static int cppc_init_perf(struct amd_cpudata *cpudata)
 	if (ret)
 		return ret;
 
+	u32 highest_perf = amd_get_highest_perf();
 	if (cpudata->hw_prefcore)
-		WRITE_ONCE(cpudata->highest_perf, AMD_PSTATE_PREFCORE_THRESHOLD);
-	else
-		WRITE_ONCE(cpudata->highest_perf, cppc_perf.highest_perf);
+		highest_perf = AMD_PSTATE_PREFCORE_THRESHOLD;
+	else if (highest_perf > cppc_perf.highest_perf)
+		highest_perf = cppc_perf.highest_perf;
 
-	WRITE_ONCE(cpudata->max_limit_perf, cpudata->highest_perf);
-
+	WRITE_ONCE(cpudata->highest_perf, highest_perf);
+	WRITE_ONCE(cpudata->max_limit_perf, highest_perf);
 	WRITE_ONCE(cpudata->nominal_perf, cppc_perf.nominal_perf);
 	WRITE_ONCE(cpudata->lowest_nonlinear_perf,
 		   cppc_perf.lowest_nonlinear_perf);
@@ -547,7 +550,9 @@ static int amd_pstate_target(struct cpufreq_policy *policy,
 static unsigned int amd_pstate_fast_switch(struct cpufreq_policy *policy,
 				  unsigned int target_freq)
 {
-	return amd_pstate_update_freq(policy, target_freq, true);
+	if (!amd_pstate_update_freq(policy, target_freq, true))
+		return target_freq;
+	return policy->cur;
 }
 
 static void amd_pstate_adjust_perf(unsigned int cpu,
@@ -1011,11 +1016,16 @@ static ssize_t show_energy_performance_available_preferences(
 {
 	int i = 0;
 	int offset = 0;
+	struct amd_cpudata *cpudata = policy->driver_data;
+
+	if (cpudata->policy == CPUFREQ_POLICY_PERFORMANCE)
+		return sysfs_emit_at(buf, offset, "%s\n",
+				energy_perf_strings[EPP_INDEX_PERFORMANCE]);
 
 	while (energy_perf_strings[i] != NULL)
 		offset += sysfs_emit_at(buf, offset, "%s ", energy_perf_strings[i++]);
 
-	sysfs_emit_at(buf, offset, "\n");
+	offset += sysfs_emit_at(buf, offset, "\n");
 
 	return offset;
 }
