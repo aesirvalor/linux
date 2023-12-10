@@ -105,6 +105,12 @@ static const struct of_device_id bmi323_of_i2c_match[] = {
 };
 MODULE_DEVICE_TABLE(of, bmi323_of_i2c_match);
 
+static const struct acpi_device_id bmi323_of_i2c_acpi[] = {
+	{ "BOSC0200" },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, bmi323_of_i2c_acpi);
+
 static struct i2c_driver bmi323_i2c_driver = {
 	.driver = {
 		.name = "bmi323",
