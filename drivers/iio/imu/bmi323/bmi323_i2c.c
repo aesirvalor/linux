@@ -94,27 +94,28 @@ static int bmi323_i2c_probe(struct i2c_client *i2c)
 }
 
 static const struct i2c_device_id bmi323_i2c_ids[] = {
-	{ "bmi323" },
+		{ "bmi323" },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, bmi323_i2c_ids);
 
 static const struct of_device_id bmi323_of_i2c_match[] = {
-	{ .compatible = "bosch,bmi323" },
+		{ .compatible = "bosch,bmi323" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, bmi323_of_i2c_match);
 
-static const struct acpi_device_id bmi323_of_i2c_acpi[] = {
+static const struct acpi_device_id bmi323_i2c_acpi[] = {
 	{ "BOSC0200" },
 	{ }
 };
-MODULE_DEVICE_TABLE(acpi, bmi323_of_i2c_acpi);
+MODULE_DEVICE_TABLE(acpi, bmi323_i2c_acpi);
 
 static struct i2c_driver bmi323_i2c_driver = {
 	.driver = {
 		.name = "bmi323",
 		.of_match_table = bmi323_of_i2c_match,
+		.acpi_match_table = ACPI_PTR(bmi323_i2c_acpi),
 	},
 	.probe = bmi323_i2c_probe,
 	.id_table = bmi323_i2c_ids,
