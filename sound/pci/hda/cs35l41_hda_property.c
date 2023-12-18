@@ -44,6 +44,24 @@ static const struct cs35l41_config cs35l41_config_table[] = {
  * in the ACPI. The Reset GPIO is also valid, so we can use the Reset defined in _DSD.
  */
 	{ "103C89C6", SPI, 2, INTERNAL, { CS35L41_RIGHT, CS35L41_LEFT, 0, 0 }, -1, -1, -1, 1000, 4500, 24 },
+	{ "10431433", I2C, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 0, 1, -1, 1000, 4500, 24 },
+	{ "10431463", I2C, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 0, 1, -1, 1000, 4500, 24 },
+	{ "10431473", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, -1, 0, 1000, 4500, 24 },
+	{ "10431483", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, -1, 0, 1000, 4500, 24 },
+	{ "10431493", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "104314D3", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "104314E3", I2C, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 0, 1, -1, 1000, 4500, 24 },
+	{ "10431503", I2C, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 0, 1, -1, 1000, 4500, 24 },
+	{ "10431533", I2C, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 0, 1, -1, 1000, 4500, 24 },
+	{ "10431573", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "10431663", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, -1, 0, 1000, 4500, 24 },
+	{ "104317F3", I2C, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 0, 1, -1, 1000, 4500, 24 },
+	{ "10431C9F", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "10431CAF", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "10431CCF", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "10431CDF", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "10431CEF", SPI, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 1, 2, 0, 1000, 4500, 24 },
+	{ "10431D1F", I2C, 2, INTERNAL, { CS35L41_LEFT, CS35L41_RIGHT, 0, 0 }, 0, 1, -1, 1000, 4500, 24 },
 	{}
 };
 
@@ -431,18 +449,24 @@ static const struct cs35l41_prop_model cs35l41_prop_model_table[] = {
 	{ "CLSA0100", NULL, lenovo_legion_no_acpi },
 	{ "CLSA0101", NULL, lenovo_legion_no_acpi },
 	{ "CSC3551", "103C89C6", generic_dsd_config },
-	{ "CSC3551", "10431433", asus_rog_2023_spkr_id2 }, // ASUS GS650P - i2c
-	{ "CSC3551", "10431463", asus_rog_2023_spkr_id2 }, // ASUS GA402X/N - i2c, reset gpio 0
-	{ "CSC3551", "10431473", asus_rog_2023_spkr_id2 }, // ASUS GU604V - spi, reset gpio 1
-	{ "CSC3551", "10431483", asus_rog_2023_spkr_id2 }, // ASUS GU603V - spi, reset 1, spkr 1
-	{ "CSC3551", "10431493", asus_rog_2023_spkr_id2 }, // ASUS GV601V - spi, reset gpio 1
-	{ "CSC3551", "10431573", asus_rog_2023_spkr_id2 }, // ASUS GZ301V - spi, reset gpio 0
+	{ "CSC3551", "10431433", generic_dsd_config },
+	{ "CSC3551", "10431463", generic_dsd_config },
+	{ "CSC3551", "10431473", generic_dsd_config },
+	{ "CSC3551", "10431483", generic_dsd_config },
+	{ "CSC3551", "10431493", generic_dsd_config },
+	{ "CSC3551", "104314D3", generic_dsd_config },
+	{ "CSC3551", "104314E3", generic_dsd_config },
+	{ "CSC3551", "10431503", generic_dsd_config },
+	{ "CSC3551", "10431533", generic_dsd_config },
+	{ "CSC3551", "10431573", generic_dsd_config },
+	{ "CSC3551", "10431663", generic_dsd_config },
 	{ "CSC3551", "104317F3", asus_rog_2023_ally_fix }, // ASUS ROG ALLY - i2c
-	{ "CSC3551", "10431B93", asus_rog_2023_spkr_id2 }, // ASUS G614J - spi, reset gpio 0
-	{ "CSC3551", "10431CAF", asus_rog_2023_spkr_id2 }, // ASUS G634J - spi, reset gpio 0
-	{ "CSC3551", "10431C9F", asus_rog_2023_spkr_id2 }, // ASUS G614JI -spi, reset gpio 0
-	{ "CSC3551", "10431D1F", asus_rog_2023_spkr_id2 }, // ASUS G713P - i2c
-	{ "CSC3551", "10431F1F", asus_rog_2023_spkr_id2 }, // ASUS H7604JV - spi, reset gpio 0
+	{ "CSC3551", "10431C9F", generic_dsd_config },
+	{ "CSC3551", "10431CAF", generic_dsd_config },
+	{ "CSC3551", "10431CCF", generic_dsd_config },
+	{ "CSC3551", "10431CDF", generic_dsd_config },
+	{ "CSC3551", "10431CEF", generic_dsd_config },
+	{ "CSC3551", "10431D1F", generic_dsd_config },
 	{}
 };
 
