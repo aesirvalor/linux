@@ -1671,7 +1671,6 @@ err:
 	hw_cfg->valid = false;
 	hw_cfg->gpio1.valid = false;
 	hw_cfg->gpio2.valid = false;
-put_physdev:
 	acpi_dev_put(cs35l41->dacpi);
 	put_device(physdev);
 
