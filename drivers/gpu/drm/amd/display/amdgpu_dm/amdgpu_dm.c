@@ -445,7 +445,7 @@ static void dm_pflip_high_irq(void *interrupt_params)
 
 	WARN_ON(!e);
 
-	vrr_active = amdgpu_dm_crtc_vrr_active_irq(amdgpu_crtc);
+	vrr_active = true;//amdgpu_dm_crtc_vrr_active_irq(amdgpu_crtc);
 
 	/* Fixed refresh rate, or VRR scanout position outside front-porch? */
 	if (!vrr_active ||
@@ -542,11 +542,11 @@ static void dm_vupdate_high_irq(void *interrupt_params)
 		 * page-flip completion events that have been queued to us
 		 * if a pageflip happened inside front-porch.
 		 */
-		if (vrr_active) {
+		if (true) {
 			amdgpu_dm_crtc_handle_vblank(acrtc);
 
 			/* BTR processing for pre-DCE12 ASICs */
-			if (acrtc->dm_irq_params.stream &&
+			if (vrr_active && acrtc->dm_irq_params.stream &&
 			    adev->family < AMDGPU_FAMILY_AI) {
 				spin_lock_irqsave(&adev_to_drm(adev)->event_lock, flags);
 				mod_freesync_handle_v_update(
@@ -2969,6 +2969,7 @@ static int dm_resume(void *handle)
 			dc_stream_release(dm_new_crtc_state->stream);
 			dm_new_crtc_state->stream = NULL;
 		}
+		dm_new_crtc_state->base.color_mgmt_changed = true;
 	}
 
 	for_each_new_plane_in_state(dm->cached_state, plane, new_plane_state, i) {
@@ -4028,6 +4029,11 @@ static int amdgpu_dm_mode_config_init(struct amdgpu_device *adev)
 		kfree(state);
 		return r;
 	}
+
+#ifdef CONFIG_DRM_AMD_COLOR_STEAMDECK
+	if (amdgpu_dm_create_color_properties(adev))
+		return -ENOMEM;
+#endif
 
 	r = amdgpu_dm_audio_init(adev);
 	if (r) {
@@ -5106,7 +5112,9 @@ static int fill_dc_plane_attributes(struct amdgpu_device *adev,
 	 * Always set input transfer function, since plane state is refreshed
 	 * every time.
 	 */
-	ret = amdgpu_dm_update_plane_color_mgmt(dm_crtc_state, dc_plane_state);
+	ret = amdgpu_dm_update_plane_color_mgmt(dm_crtc_state,
+						plane_state,
+						dc_plane_state);
 	if (ret)
 		return ret;
 
@@ -8113,7 +8121,7 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_state *state,
 	int planes_count = 0, vpos, hpos;
 	unsigned long flags;
 	u32 target_vblank, last_flip_vblank;
-	bool vrr_active = amdgpu_dm_crtc_vrr_active(acrtc_state);
+	bool vrr_active = true;//amdgpu_dm_crtc_vrr_active(acrtc_state);
 	bool cursor_update = false;
 	bool pflip_present = false;
 	bool dirty_rects_changed = false;
@@ -8175,6 +8183,10 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_state *state,
 			bundle->surface_updates[planes_count].gamma = dc_plane->gamma_correction;
 			bundle->surface_updates[planes_count].in_transfer_func = dc_plane->in_transfer_func;
 			bundle->surface_updates[planes_count].gamut_remap_matrix = &dc_plane->gamut_remap_matrix;
+			bundle->surface_updates[planes_count].hdr_mult = dc_plane->hdr_mult;
+			bundle->surface_updates[planes_count].func_shaper = dc_plane->in_shaper_func;
+			bundle->surface_updates[planes_count].lut3d_func = dc_plane->lut3d_func;
+			bundle->surface_updates[planes_count].blend_tf = dc_plane->blend_tf;
 		}
 
 		amdgpu_dm_plane_fill_dc_scaling_info(dm->adev, new_plane_state,
@@ -8386,6 +8398,10 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_state *state,
 				&acrtc_state->stream->csc_color_matrix;
 			bundle->stream_update.out_transfer_func =
 				acrtc_state->stream->out_transfer_func;
+			bundle->stream_update.lut3d_func =
+				(struct dc_3dlut *) acrtc_state->stream->lut3d_func;
+			bundle->stream_update.func_shaper =
+				(struct dc_transfer_func *) acrtc_state->stream->func_shaper;
 		}
 
 		acrtc_state->stream->abm_level = acrtc_state->abm_level;
@@ -9587,6 +9603,7 @@ skip_modeset:
 	 * when a modeset is needed, to ensure it gets reprogrammed.
 	 */
 	if (dm_new_crtc_state->base.color_mgmt_changed ||
+	    dm_old_crtc_state->regamma_tf != dm_new_crtc_state->regamma_tf ||
 	    drm_atomic_crtc_needs_modeset(new_crtc_state)) {
 		ret = amdgpu_dm_update_crtc_color_mgmt(dm_new_crtc_state);
 		if (ret)
@@ -9654,6 +9671,10 @@ static bool should_reset_plane(struct drm_atomic_state *state,
 	 */
 	for_each_oldnew_plane_in_state(state, other, old_other_state, new_other_state, i) {
 		struct amdgpu_framebuffer *old_afb, *new_afb;
+		struct dm_plane_state *dm_new_other_state, *dm_old_other_state;
+
+		dm_new_other_state = to_dm_plane_state(new_other_state);
+		dm_old_other_state = to_dm_plane_state(old_other_state);
 
 		if (other->type == DRM_PLANE_TYPE_CURSOR)
 			continue;
@@ -9688,6 +9709,18 @@ static bool should_reset_plane(struct drm_atomic_state *state,
 		/* Colorspace changes. */
 		if (old_other_state->color_range != new_other_state->color_range ||
 		    old_other_state->color_encoding != new_other_state->color_encoding)
+			return true;
+
+		/* HDR/Transfer Function changes. */
+		if (dm_old_other_state->degamma_tf != dm_new_other_state->degamma_tf ||
+		    dm_old_other_state->degamma_lut != dm_new_other_state->degamma_lut ||
+		    dm_old_other_state->hdr_mult != dm_new_other_state->hdr_mult ||
+		    dm_old_other_state->ctm != dm_new_other_state->ctm ||
+		    dm_old_other_state->shaper_lut != dm_new_other_state->shaper_lut ||
+		    dm_old_other_state->shaper_tf != dm_new_other_state->shaper_tf ||
+		    dm_old_other_state->lut3d != dm_new_other_state->lut3d ||
+		    dm_old_other_state->blend_lut != dm_new_other_state->blend_lut ||
+		    dm_old_other_state->blend_tf != dm_new_other_state->blend_tf)
 			return true;
 
 		/* Framebuffer checks fall at the end. */
@@ -10183,6 +10216,21 @@ static int amdgpu_dm_atomic_check(struct drm_device *dev,
 			}
 		}
 	}
+
+	/* Propogate CM reset state */
+	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
+		dm_old_crtc_state = to_dm_crtc_state(old_crtc_state);
+		dm_new_crtc_state = to_dm_crtc_state(new_crtc_state);
+
+		if (dm_old_crtc_state->cm_needs_reset || dm_new_crtc_state->cm_needs_reset)
+		{
+			dm_old_crtc_state->cm_needs_reset = false;
+			dm_new_crtc_state->cm_needs_reset = false;
+
+			dm_new_crtc_state->base.color_mgmt_changed = true;
+		}
+	}
+
 	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
 		dm_old_crtc_state = to_dm_crtc_state(old_crtc_state);
 
@@ -10544,6 +10592,23 @@ static int amdgpu_dm_atomic_check(struct drm_device *dev,
 	return ret;
 
 fail:
+	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state, new_crtc_state, i) {
+		/*
+		 * If we failed our commit, if our new crtc was dirty color-wise, make sure we forward that
+		 * dirty bit on our old state now so we don't forget to revert the work we did before
+		 * we failed this commit on the next commit.
+		 *
+		 * Store it on old and new state so we don't lose track of it for this CRTC.
+		 */
+		dm_old_crtc_state = to_dm_crtc_state(old_crtc_state);
+		dm_new_crtc_state = to_dm_crtc_state(new_crtc_state);
+
+		if (new_crtc_state->color_mgmt_changed) {
+			dm_old_crtc_state->cm_needs_reset = true;
+			dm_new_crtc_state->cm_needs_reset = true;
+		}
+	}
+
 	if (ret == -EDEADLK)
 		DRM_DEBUG_DRIVER("Atomic check stopped to avoid deadlock.\n");
 	else if (ret == -EINTR || ret == -EAGAIN || ret == -ERESTARTSYS)

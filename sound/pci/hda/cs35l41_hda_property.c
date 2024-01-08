@@ -10,6 +10,7 @@
 #include <linux/dmi.h>
 #include <linux/acpi.h>
 #include <linux/gpio/consumer.h>
+#include <linux/kernel.h>
 #include <linux/string.h>
 #include "cs35l41_hda_property.h"
 #include <linux/spi/spi.h>
@@ -345,27 +346,80 @@ static int asus_rog_2023_ally_fix(struct cs35l41_hda *cs35l41, struct device *ph
 	int rog_ally_bios_int;
 	kstrtoint(rog_ally_bios_num, 10, &rog_ally_bios_int);
 	if(rog_ally_bios_int >= 330){
-		printk(KERN_INFO "DSD properties exist in the %d BIOS. Not applying DSD override...\n", rog_ally_bios_int);
-		return -ENOENT; //Patch not applicable. Exiting...
+		printk(KERN_INFO "DSD properties exist in the %d BIOS\n", rog_ally_bios_int);
+		return -ENOENT; //Patch not necessary. Exiting...
 	}
-
-	struct cs35l41_hw_cfg *hw_cfg = &cs35l41->hw_cfg;
 
 	dev_info(cs35l41->dev, "Adding DSD properties for %s\n", cs35l41->acpi_subsystem_id);
 
-	cs35l41->index = id == 0x40 ? 0 : 1;
+	struct cs35l41_hw_cfg *hw_cfg = &cs35l41->hw_cfg;
+	int reset_gpio = 0;
+	int spkr_gpio = 2;
+
+	/* check SPI or I2C address to assign the index */
+	cs35l41->index = (id == 0 || id == 0x40) ? 0 : 1;
 	cs35l41->channel_index = 0;
-	cs35l41->reset_gpio = gpiod_get_index(physdev, NULL, 0, GPIOD_OUT_HIGH);
-	cs35l41->speaker_id = cs35l41_get_speaker_id(physdev, 0, 0, 2);
 	hw_cfg->spk_pos = cs35l41->index;
-	hw_cfg->gpio1.func = CS35L41_NOT_USED;
+	hw_cfg->bst_type = CS35L41_EXT_BOOST;
+	hw_cfg->gpio1.func = CS35l41_VSPK_SWITCH;
 	hw_cfg->gpio1.valid = true;
 	hw_cfg->gpio2.func = CS35L41_INTERRUPT;
 	hw_cfg->gpio2.valid = true;
-	hw_cfg->bst_type = CS35L41_INT_BOOST;
-	hw_cfg->bst_ind = 1000; /* 1,000nH Inductance value */
-	hw_cfg->bst_ipk = 4500; /* 4,500mA peak current */
-	hw_cfg->bst_cap = 24; /* 24 microFarad cap value */
+
+	if (strcmp(cs35l41->acpi_subsystem_id, "10431483") == 0)
+		spkr_gpio = 1;
+	cs35l41->speaker_id = cs35l41_get_speaker_id(physdev, 0, 0, spkr_gpio);
+
+	if (strcmp(cs35l41->acpi_subsystem_id, "10431463") == 0)
+		reset_gpio = 0;
+	else if (strcmp(cs35l41->acpi_subsystem_id, "10431473") == 0
+		|| strcmp(cs35l41->acpi_subsystem_id, "10431483") == 0
+		|| strcmp(cs35l41->acpi_subsystem_id, "10431493") == 0) {
+		reset_gpio = 1;
+	}
+	cs35l41->reset_gpio = gpiod_get_index(physdev, NULL, reset_gpio, GPIOD_OUT_HIGH);
+
+	hw_cfg->valid = true;
+
+	return 0;
+}
+
+/*
+ * The CSC3551 is used in almost the entire ASUS ROG laptop range in 2023, this is likely to
+ * also include many non ROG labelled laptops. It is also used with either I2C connection or
+ * SPI connection. The SPI connected versions may be missing a chip select GPIO and require
+ * an DSD table patch.
+ */
+static int asus_rog_2023_spkr_id2(struct cs35l41_hda *cs35l41, struct device *physdev, int id,
+				const char *hid)
+{
+	struct cs35l41_hw_cfg *hw_cfg = &cs35l41->hw_cfg;
+	int reset_gpio = 0;
+	int spkr_gpio = 2;
+
+	/* check SPI or I2C address to assign the index */
+	cs35l41->index = (id == 0 || id == 0x40) ? 0 : 1;
+	cs35l41->channel_index = 0;
+	hw_cfg->spk_pos = cs35l41->index;
+	hw_cfg->bst_type = CS35L41_EXT_BOOST;
+	hw_cfg->gpio1.func = CS35l41_VSPK_SWITCH;
+	hw_cfg->gpio1.valid = true;
+	hw_cfg->gpio2.func = CS35L41_INTERRUPT;
+	hw_cfg->gpio2.valid = true;
+
+	if (strcmp(cs35l41->acpi_subsystem_id, "10431483") == 0)
+		spkr_gpio = 1;
+	cs35l41->speaker_id = cs35l41_get_speaker_id(physdev, 0, 0, spkr_gpio);
+
+	if (strcmp(cs35l41->acpi_subsystem_id, "10431463") == 0)
+		reset_gpio = 0;
+	else if (strcmp(cs35l41->acpi_subsystem_id, "10431473") == 0
+		|| strcmp(cs35l41->acpi_subsystem_id, "10431483") == 0
+		|| strcmp(cs35l41->acpi_subsystem_id, "10431493") == 0) {
+		reset_gpio = 1;
+	}
+	cs35l41->reset_gpio = gpiod_get_index(physdev, NULL, reset_gpio, GPIOD_OUT_HIGH);
+
 	hw_cfg->valid = true;
 
 	return 0;
@@ -396,7 +450,6 @@ static const struct cs35l41_prop_model cs35l41_prop_model_table[] = {
 	{ "CSC3551", "10431663", generic_dsd_config },
 	{ "CSC3551", "104316D3", generic_dsd_config },
 	{ "CSC3551", "104316F3", generic_dsd_config },
-	{ "CSC3551", "104317F3", generic_dsd_config },
 	{ "CSC3551", "10431863", generic_dsd_config },
 	{ "CSC3551", "104318D3", generic_dsd_config },
 	{ "CSC3551", "10431C9F", generic_dsd_config },
@@ -411,7 +464,14 @@ static const struct cs35l41_prop_model cs35l41_prop_model_table[] = {
 	{ "CSC3551", "10431F12", generic_dsd_config },
 	{ "CSC3551", "10431F1F", generic_dsd_config },
 	{ "CSC3551", "10431F62", generic_dsd_config },
+	{ "CSC3551", "10431433", asus_rog_2023_spkr_id2 }, // ASUS GS650P - i2c
+	{ "CSC3551", "10431463", asus_rog_2023_spkr_id2 }, // ASUS GA402X/N - i2c, reset gpio 0
+	{ "CSC3551", "10431473", asus_rog_2023_spkr_id2 }, // ASUS GU604V - spi, reset gpio 1
+	{ "CSC3551", "10431483", asus_rog_2023_spkr_id2 }, // ASUS GU603V - spi, reset 1, spkr 1
+	{ "CSC3551", "10431493", asus_rog_2023_spkr_id2 }, // ASUS GV601V - spi, reset gpio 1
+	{ "CSC3551", "10431573", asus_rog_2023_spkr_id2 }, // ASUS GZ301V - spi, reset gpio 0
 	{ "CSC3551", "104317F3", asus_rog_2023_ally_fix }, // ASUS ROG ALLY - i2c
+	{ "CSC3551", "10431B93", asus_rog_2023_spkr_id2 }, // ASUS G614J - spi, reset gpio 0
 	{}
 };
 

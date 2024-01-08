@@ -1226,6 +1226,14 @@ config USER_NS
 
 	  If unsure, say N.
 
+config ZENIFY
+	bool "Zenify kernel"
+	default y
+	help
+	  Zenify kernel.
+
+	  If unsure, say Y.
+
 config PID_NS
 	bool "PID Namespaces"
 	default y
