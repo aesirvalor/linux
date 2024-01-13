@@ -36,6 +36,7 @@ void ath11k_dp_peer_cleanup(struct ath11k *ar, int vdev_id, const u8 *addr)
 	}
 
 	ath11k_peer_rx_tid_cleanup(ar, peer);
+	peer->dp_setup_done = false;
 	crypto_free_shash(peer->tfm_mmic);
 	spin_unlock_bh(&ab->base_lock);
 }
@@ -72,7 +73,8 @@ int ath11k_dp_peer_setup(struct ath11k *ar, int vdev_id, const u8 *addr)
 	ret = ath11k_peer_rx_frag_setup(ar, addr, vdev_id);
 	if (ret) {
 		ath11k_warn(ab, "failed to setup rx defrag context\n");
-		return ret;
+		tid--;
+		goto peer_clean;
 	}
 
 	/* TODO: Setup other peer specific resource used in data path */
@@ -252,9 +254,9 @@ int ath11k_dp_srng_setup(struct ath11k_base *ab, struct dp_srng *ring,
 	}
 
 	if (!cached)
-		ring->vaddr_unaligned = dma_alloc_coherent(ab->dev, ring->size,
+		ring->vaddr_unaligned = ath11k_core_dma_alloc_coherent(ab->dev, ring->size,
 							   &ring->paddr_unaligned,
-							   GFP_KERNEL);
+							   GFP_KERNEL | GFP_DMA32);
 
 	if (!ring->vaddr_unaligned)
 		return -ENOMEM;
@@ -525,9 +527,9 @@ static int ath11k_dp_scatter_idle_link_desc_setup(struct ath11k_base *ab,
 		return -EINVAL;
 
 	for (i = 0; i < num_scatter_buf; i++) {
-		slist[i].vaddr = dma_alloc_coherent(ab->dev,
+		slist[i].vaddr = ath11k_core_dma_alloc_coherent(ab->dev,
 						    HAL_WBM_IDLE_SCATTER_BUF_SIZE_MAX,
-						    &slist[i].paddr, GFP_KERNEL);
+						    &slist[i].paddr, GFP_KERNEL | GFP_DMA32);
 		if (!slist[i].vaddr) {
 			ret = -ENOMEM;
 			goto err;
@@ -605,9 +607,9 @@ static int ath11k_dp_link_desc_bank_alloc(struct ath11k_base *ab,
 			desc_sz = last_bank_sz;
 
 		desc_bank[i].vaddr_unaligned =
-					dma_alloc_coherent(ab->dev, desc_sz,
+					ath11k_core_dma_alloc_coherent(ab->dev, desc_sz,
 							   &desc_bank[i].paddr_unaligned,
-							   GFP_KERNEL);
+							   GFP_KERNEL | GFP_DMA32);
 		if (!desc_bank[i].vaddr_unaligned) {
 			ret = -ENOMEM;
 			goto err;

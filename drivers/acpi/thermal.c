@@ -59,10 +59,6 @@ static int tzp;
 module_param(tzp, int, 0444);
 MODULE_PARM_DESC(tzp, "Thermal zone polling frequency, in 1/10 seconds.");
 
-static int nocrt;
-module_param(nocrt, int, 0);
-MODULE_PARM_DESC(nocrt, "Set to take no action upon ACPI thermal zone critical trips points.");
-
 static int off;
 module_param(off, int, 0);
 MODULE_PARM_DESC(off, "Set to disable ACPI thermal support.");
@@ -379,8 +375,10 @@ static int acpi_thermal_trips_update(struct acpi_thermal *tz, int flag)
 			tz->trips.passive.flags.valid = 1;
 		}
 
-		if (memcmp(&tz->trips.passive.devices, &devices,
-			   sizeof(struct acpi_handle_list))) {
+		if (tz->trips.passive.devices.count != devices.count ||
+			   memcmp(tz->trips.passive.devices.handles,
+			   devices.handles, sizeof(acpi_handle) * devices.count)) {
+			kfree(tz->trips.passive.devices.handles);
 			memcpy(&tz->trips.passive.devices, &devices,
 			       sizeof(struct acpi_handle_list));
 			ACPI_THERMAL_TRIPS_EXCEPTION(flag, tz, "device");
@@ -444,8 +442,10 @@ static int acpi_thermal_trips_update(struct acpi_thermal *tz, int flag)
 				tz->trips.active[i].flags.valid = 1;
 			}
 
-			if (memcmp(&tz->trips.active[i].devices, &devices,
-				   sizeof(struct acpi_handle_list))) {
+			if (tz->trips.active[i].devices.count != devices.count ||
+				   memcmp(tz->trips.active[i].devices.handles,
+				   devices.handles, sizeof(acpi_handle) * devices.count)) {
+				kfree(tz->trips.active[i].devices.handles);
 				memcpy(&tz->trips.active[i].devices, &devices,
 				       sizeof(struct acpi_handle_list));
 				ACPI_THERMAL_TRIPS_EXCEPTION(flag, tz, "device");
@@ -463,8 +463,10 @@ static int acpi_thermal_trips_update(struct acpi_thermal *tz, int flag)
 		memset(&devices, 0, sizeof(devices));
 		status = acpi_evaluate_reference(tz->device->handle, "_TZD",
 						 NULL, &devices);
-		if (ACPI_SUCCESS(status) &&
-		    memcmp(&tz->devices, &devices, sizeof(devices))) {
+		if (ACPI_SUCCESS(status) && (tz->devices.count != devices.count ||
+		    memcmp(tz->devices.handles, devices.handles,
+		    sizeof(acpi_handle) * devices.count))) {
+			kfree(tz->devices.handles);
 			tz->devices = devices;
 			ACPI_THERMAL_TRIPS_EXCEPTION(flag, tz, "device");
 		}
@@ -1062,6 +1064,7 @@ end:
 static int acpi_thermal_remove(struct acpi_device *device)
 {
 	struct acpi_thermal *tz;
+	int i;
 
 	if (!device || !acpi_driver_data(device))
 		return -EINVAL;
@@ -1070,6 +1073,10 @@ static int acpi_thermal_remove(struct acpi_device *device)
 	tz = acpi_driver_data(device);
 
 	acpi_thermal_unregister_thermal_zone(tz);
+	kfree(tz->trips.passive.devices.handles);
+	for (i = 0; i < ACPI_THERMAL_MAX_ACTIVE; i++)
+		kfree(tz->trips.active[i].devices.handles);
+	kfree(tz->devices.handles);
 	kfree(tz);
 	return 0;
 }
@@ -1128,7 +1135,7 @@ static int thermal_act(const struct dmi_system_id *d) {
 static int thermal_nocrt(const struct dmi_system_id *d) {
 	pr_notice("%s detected: disabling all critical thermal trip point actions.\n",
 		  d->ident);
-	nocrt = 1;
+	crt = -1;
 	return 0;
 }
 static int thermal_tzp(const struct dmi_system_id *d) {

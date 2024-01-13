@@ -15,6 +15,7 @@ config MFD_CS5535
 	tristate "AMD CS5535 and CS5536 southbridge core functions"
 	select MFD_CORE
 	depends on PCI && (X86_32 || (X86 && COMPILE_TEST))
+	depends on !UML
 	help
 	  This is the core driver for CS5535/CS5536 MFD functions.  This is
 	  necessary for using the board's GPIO and MFGPT functionality.
@@ -2260,6 +2261,17 @@ config MFD_RSMU_SPI
 	  This driver provides common support for accessing the device.
 	  Additional drivers must be enabled in order to use the functionality
 	  of the device.
+
+config MFD_STEAMDECK
+	tristate "Valve Steam Deck"
+	select MFD_CORE
+	depends on ACPI
+	depends on X86_64 || COMPILE_TEST
+	help
+	  This driver registers various MFD cells that expose aspects
+	  of Steam Deck specific ACPI functionality.
+
+	  Say N here, unless you are running on Steam Deck hardware.
 
 endmenu
 endif

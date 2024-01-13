@@ -19,6 +19,7 @@
 #include <linux/kdev_t.h>
 #include <linux/slab.h>
 
+#include <drm/drm_accel.h>
 #include <drm/drm_connector.h>
 #include <drm/drm_device.h>
 #include <drm/drm_file.h>
@@ -435,6 +436,37 @@ void drm_sysfs_connector_hotplug_event(struct drm_connector *connector)
 EXPORT_SYMBOL(drm_sysfs_connector_hotplug_event);
 
 /**
+ * drm_sysfs_reset_event - generate a DRM uevent to indicate GPU reset
+ * @dev: DRM device
+ * @reset_info: The contextual information about the reset (like PID, flags)
+ *
+ * Send a uevent for the DRM device specified by @dev. This informs
+ * user that a GPU reset has occurred, so that an interested client
+ * can take any recovery or profiling measure.
+ */
+void drm_sysfs_reset_event(struct drm_device *dev, struct drm_reset_event *reset_info)
+{
+	unsigned char pid_str[13];
+	unsigned char flags_str[15];
+	unsigned char pname_str[TASK_COMM_LEN + 6];
+	unsigned char reset_str[] = "RESET=1";
+	char *envp[] = { reset_str, pid_str, pname_str, flags_str, NULL };
+
+	if (!reset_info) {
+		DRM_WARN("No reset info, not sending the event\n");
+		return;
+	}
+
+	DRM_DEBUG("generating reset event\n");
+
+	snprintf(pid_str, ARRAY_SIZE(pid_str), "PID=%u", reset_info->pid);
+	snprintf(pname_str, ARRAY_SIZE(pname_str), "NAME=%s", reset_info->pname);
+	snprintf(flags_str, ARRAY_SIZE(flags_str), "FLAGS=%u", reset_info->flags);
+	kobject_uevent_env(&dev->primary->kdev->kobj, KOBJ_CHANGE, envp);
+}
+EXPORT_SYMBOL(drm_sysfs_reset_event);
+
+/**
  * drm_sysfs_connector_status_event - generate a DRM uevent for connector
  * property status change
  * @connector: connector on which property status changed
@@ -471,19 +503,26 @@ struct device *drm_sysfs_minor_alloc(struct drm_minor *minor)
 	struct device *kdev;
 	int r;
 
-	if (minor->type == DRM_MINOR_RENDER)
-		minor_str = "renderD%d";
-	else
-		minor_str = "card%d";
-
 	kdev = kzalloc(sizeof(*kdev), GFP_KERNEL);
 	if (!kdev)
 		return ERR_PTR(-ENOMEM);
 
 	device_initialize(kdev);
-	kdev->devt = MKDEV(DRM_MAJOR, minor->index);
-	kdev->class = drm_class;
-	kdev->type = &drm_sysfs_device_minor;
+
+	if (minor->type == DRM_MINOR_ACCEL) {
+		minor_str = "accel%d";
+		accel_set_device_instance_params(kdev, minor->index);
+	} else {
+		if (minor->type == DRM_MINOR_RENDER)
+			minor_str = "renderD%d";
+		else
+			minor_str = "card%d";
+
+		kdev->devt = MKDEV(DRM_MAJOR, minor->index);
+		kdev->class = drm_class;
+		kdev->type = &drm_sysfs_device_minor;
+	}
+
 	kdev->parent = minor->dev->dev;
 	kdev->release = drm_sysfs_release;
 	dev_set_drvdata(kdev, minor);

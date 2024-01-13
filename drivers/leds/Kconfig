@@ -814,7 +814,7 @@ config LEDS_SPI_BYTE
 config LEDS_TI_LMU_COMMON
 	tristate "LED driver for TI LMU"
 	depends on LEDS_CLASS
-	depends on REGMAP
+	select REGMAP
 	help
 	  Say Y to enable the LED driver for TI LMU devices.
 	  This supports common features between the TI LM3532, LM3631, LM3632,
@@ -863,6 +863,13 @@ config LEDS_ACER_A500
 	help
 	  This option enables support for the Power Button LED of
 	  Acer Iconia Tab A500.
+
+config LEDS_STEAMDECK
+	tristate "LED support for Steam Deck"
+	depends on LEDS_CLASS && MFD_STEAMDECK
+	help
+	  This option enabled support for the status LED (next to the
+	  power button) on Steam Deck
 
 source "drivers/leds/blink/Kconfig"
 

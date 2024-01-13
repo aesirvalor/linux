@@ -24,6 +24,8 @@
 #ifndef SMU13_DRIVER_IF_V13_0_0_H
 #define SMU13_DRIVER_IF_V13_0_0_H
 
+#define SMU13_0_0_DRIVER_IF_VERSION 0x32
+
 //Increment this version if SkuTable_t or BoardTable_t change
 #define PPTABLE_VERSION 0x26
 
@@ -1347,10 +1349,12 @@ typedef struct {
   uint32_t     MmHubPadding[8];
 } BoardTable_t;
 
+#pragma pack(push, 1)
 typedef struct {
   SkuTable_t SkuTable;
   BoardTable_t BoardTable;
 } PPTable_t;
+#pragma pack(pop)
 
 typedef struct {
   // Time constant parameters for clock averages in ms

@@ -129,6 +129,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_MAX98927
 	imply SND_SOC_MAX98373_I2C
 	imply SND_SOC_MAX98373_SDW
+	imply SND_SOC_MAX98388
 	imply SND_SOC_MAX98390
 	imply SND_SOC_MAX98396
 	imply SND_SOC_MAX9850
@@ -199,6 +200,7 @@ config SND_SOC_ALL_CODECS
 	imply SND_SOC_RT715_SDCA_SDW
 	imply SND_SOC_RT1308_SDW
 	imply SND_SOC_RT1316_SDW
+	imply SND_SOC_RT1318_SDW
 	imply SND_SOC_RT9120
 	imply SND_SOC_SDW_MOCKUP
 	imply SND_SOC_SGTL5000
@@ -1074,6 +1076,16 @@ config SND_SOC_MAX98373_SDW
 	  interface for control data. Select this if MAX98373 is
 	  connected via soundwire.
 
+config SND_SOC_MAX98388
+	tristate "Analog Devices MAX98388 Speaker Amplifier"
+	depends on I2C
+	help
+	  Enable support for Analog Devices MAX98388 amplifier
+	  The MAX98388 is a mono digital input amplifier with
+	  integrated IV Feedback. The device provides a precision
+	  output current sense channel and an output voltage
+	  feedback channel.
+
 config SND_SOC_MAX98390
 	tristate "Maxim Integrated MAX98390 Speaker Amplifier"
 	depends on I2C
@@ -1308,6 +1320,11 @@ config SND_SOC_RT1308_SDW
 
 config SND_SOC_RT1316_SDW
 	tristate "Realtek RT1316 Codec - SDW"
+	depends on SOUNDWIRE
+	select REGMAP_SOUNDWIRE
+
+config SND_SOC_RT1318_SDW
+	tristate "Realtek RT1318 Codec - SDW"
 	depends on SOUNDWIRE
 	select REGMAP_SOUNDWIRE
 
@@ -2039,6 +2056,7 @@ config SND_SOC_WSA883X
 config SND_SOC_ZL38060
 	tristate "Microsemi ZL38060 Connected Home Audio Processor"
 	depends on SPI_MASTER
+	depends on GPIOLIB
 	select REGMAP
 	help
 	  Support for ZL38060 Connected Home Audio Processor from Microsemi,

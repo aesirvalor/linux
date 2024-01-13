@@ -167,7 +167,7 @@ static int cs35l41_get_fs_mon_config_index(int freq)
 static const DECLARE_TLV_DB_RANGE(dig_vol_tlv,
 		0, 0, TLV_DB_SCALE_ITEM(TLV_DB_GAIN_MUTE, 0, 1),
 		1, 913, TLV_DB_MINMAX_ITEM(-10200, 1200));
-static DECLARE_TLV_DB_SCALE(amp_gain_tlv, 0, 1, 1);
+static DECLARE_TLV_DB_SCALE(amp_gain_tlv, 50, 100, 0);
 
 static const struct snd_kcontrol_new dre_ctrl =
 	SOC_DAPM_SINGLE("Switch", CS35L41_PWR_CTRL3, 20, 1, 0);
@@ -356,6 +356,19 @@ static const struct snd_kcontrol_new cs35l41_aud_controls[] = {
 	WM_ADSP_FW_CONTROL("DSP1", 0),
 };
 
+static void cs35l41_boost_enable(struct cs35l41_private *cs35l41, unsigned int enable)
+{
+	switch (cs35l41->hw_cfg.bst_type) {
+	case CS35L41_INT_BOOST:
+		enable = enable ? CS35L41_BST_EN_DEFAULT : CS35L41_BST_DIS_FET_OFF;
+		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL2, CS35L41_BST_EN_MASK,
+				enable << CS35L41_BST_EN_SHIFT);
+		break;
+	default:
+		break;
+	}
+}
+
 static irqreturn_t cs35l41_irq(int irq, void *data)
 {
 	struct cs35l41_private *cs35l41 = data;
@@ -431,8 +444,7 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 
 	if (status[0] & CS35L41_BST_OVP_ERR) {
 		dev_crit_ratelimited(cs35l41->dev, "VBST Over Voltage error\n");
-		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL2,
-				   CS35L41_BST_EN_MASK, 0);
+		cs35l41_boost_enable(cs35l41, 0);
 		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
 			     CS35L41_BST_OVP_ERR);
 		regmap_write(cs35l41->regmap, CS35L41_PROTECT_REL_ERR_IGN, 0);
@@ -441,16 +453,13 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 				   CS35L41_BST_OVP_ERR_RLS);
 		regmap_update_bits(cs35l41->regmap, CS35L41_PROTECT_REL_ERR_IGN,
 				   CS35L41_BST_OVP_ERR_RLS, 0);
-		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL2,
-				   CS35L41_BST_EN_MASK,
-				   CS35L41_BST_EN_DEFAULT << CS35L41_BST_EN_SHIFT);
+		cs35l41_boost_enable(cs35l41, 1);
 		ret = IRQ_HANDLED;
 	}
 
 	if (status[0] & CS35L41_BST_DCM_UVP_ERR) {
 		dev_crit_ratelimited(cs35l41->dev, "DCM VBST Under Voltage Error\n");
-		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL2,
-				   CS35L41_BST_EN_MASK, 0);
+		cs35l41_boost_enable(cs35l41, 0);
 		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
 			     CS35L41_BST_DCM_UVP_ERR);
 		regmap_write(cs35l41->regmap, CS35L41_PROTECT_REL_ERR_IGN, 0);
@@ -459,16 +468,13 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 				   CS35L41_BST_UVP_ERR_RLS);
 		regmap_update_bits(cs35l41->regmap, CS35L41_PROTECT_REL_ERR_IGN,
 				   CS35L41_BST_UVP_ERR_RLS, 0);
-		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL2,
-				   CS35L41_BST_EN_MASK,
-				   CS35L41_BST_EN_DEFAULT << CS35L41_BST_EN_SHIFT);
+		cs35l41_boost_enable(cs35l41, 1);
 		ret = IRQ_HANDLED;
 	}
 
 	if (status[0] & CS35L41_BST_SHORT_ERR) {
 		dev_crit_ratelimited(cs35l41->dev, "LBST error: powering off!\n");
-		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL2,
-				   CS35L41_BST_EN_MASK, 0);
+		cs35l41_boost_enable(cs35l41, 0);
 		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
 			     CS35L41_BST_SHORT_ERR);
 		regmap_write(cs35l41->regmap, CS35L41_PROTECT_REL_ERR_IGN, 0);
@@ -477,10 +483,21 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 				   CS35L41_BST_SHORT_ERR_RLS);
 		regmap_update_bits(cs35l41->regmap, CS35L41_PROTECT_REL_ERR_IGN,
 				   CS35L41_BST_SHORT_ERR_RLS, 0);
-		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL2,
-				   CS35L41_BST_EN_MASK,
-				   CS35L41_BST_EN_DEFAULT << CS35L41_BST_EN_SHIFT);
+		cs35l41_boost_enable(cs35l41, 1);
 		ret = IRQ_HANDLED;
+	}
+
+	if (status[2] & CS35L41_PLL_LOCK) {
+		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS3,
+			     CS35L41_PLL_LOCK);
+		if (cs35l41->hw_cfg.shared_boost == SHARED_BOOST_PASSIVE) {
+			/* GPIO2 as open drain interrupt, GPIO1 as SYNC */
+			regmap_write(cs35l41->regmap, CS35L41_GPIO_PAD_CONTROL,
+				     0x02020000);
+			regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL3,
+					   CS35L41_SYNC_EN_MASK,
+					   CS35L41_SYNC_EN_MASK);
+		}
 	}
 
 done:
@@ -537,6 +554,14 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 		regmap_multi_reg_write_bypassed(cs35l41->regmap,
 						cs35l41_pdn_patch,
 						ARRAY_SIZE(cs35l41_pdn_patch));
+		if (cs35l41->hw_cfg.shared_boost == SHARED_BOOST_PASSIVE) {
+			regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL3,
+					   CS35L41_SYNC_EN_MASK, 0);
+			/* GPIO2 as open drain interrupt, GPIO1 as hi-z input */
+			regmap_write(cs35l41->regmap, CS35L41_GPIO_PAD_CONTROL,
+				     0x02000000);
+		}
+
 		break;
 	default:
 		dev_err(cs35l41->dev, "Invalid event = 0x%x\n", event);
@@ -922,6 +947,28 @@ static int cs35l41_dai_set_sysclk(struct snd_soc_dai *dai,
 	return 0;
 }
 
+static const struct reg_sequence cs35l41_active_seq[] = {
+	/* SYNC_BST_CTL_RX_EN = 1; SYNC_BST_CTL_TX_EN = 1*/
+	{CS35L41_MDSYNC_EN,		0x00003200},
+	/* BST_CTL_SEL = MDSYNC */
+	{CS35L41_BSTCVRT_VCTRL2,	0x00000002},
+	/* WKFET_AMP_EN = 1; SYNC_EN = 1; CLASSH_EN= 1 */
+	{CS35L41_PWR_CTRL3,		0x01000110},
+};
+
+static const struct reg_sequence cs35l41_passive_seq[] = {
+	/* GPIO2 as open drain interrupt, GPIO1 as hi-z input */
+	{CS35L41_GPIO_PAD_CONTROL,	0x02000000},
+	/* SYNC_BST_CTL_RX_EN = 0; SYNC_BST_CTL_TX_EN = 1 */
+	{CS35L41_MDSYNC_EN,		0x00001200},
+	/* BST_EN = 0 */
+	{CS35L41_PWR_CTRL2,		0x00003300},
+	/* BST_CTL_SEL = CLASSH */
+	{CS35L41_BSTCVRT_VCTRL2,	0x00000001},
+	/* WKFET_AMP_EN = 1; SYNC_EN = 0; CLASSH_EN= 1 */
+	{CS35L41_PWR_CTRL3,		0x01000010},
+};
+
 static int cs35l41_set_pdata(struct cs35l41_private *cs35l41)
 {
 	struct cs35l41_hw_cfg *hw_cfg = &cs35l41->hw_cfg;
@@ -937,6 +984,24 @@ static int cs35l41_set_pdata(struct cs35l41_private *cs35l41)
 	ret = cs35l41_init_boost(cs35l41->dev, cs35l41->regmap, hw_cfg);
 	if (ret)
 		return ret;
+
+	if (cs35l41->hw_cfg.shared_boost == SHARED_BOOST_ACTIVE) {
+		ret = regmap_multi_reg_write(cs35l41->regmap,
+					     cs35l41_active_seq,
+					     ARRAY_SIZE(cs35l41_active_seq));
+		if (ret < 0)
+			dev_err(cs35l41->dev,
+				"Active shared boost seq failed %d\n", ret);
+	}
+
+	if (cs35l41->hw_cfg.shared_boost == SHARED_BOOST_PASSIVE) {
+		ret = regmap_multi_reg_write(cs35l41->regmap,
+					     cs35l41_passive_seq,
+					     ARRAY_SIZE(cs35l41_passive_seq));
+		if (ret < 0)
+			dev_err(cs35l41->dev,
+				"Passive shared boost seq failed %d\n", ret);
+	}
 
 	/* Optional */
 	if (hw_cfg->dout_hiz <= CS35L41_ASP_DOUT_HIZ_MASK && hw_cfg->dout_hiz >= 0)
@@ -1040,6 +1105,14 @@ static int cs35l41_handle_pdata(struct device *dev, struct cs35l41_hw_cfg *hw_cf
 	ret = device_property_read_u32(dev, "cirrus,boost-type", &val);
 	if (ret >= 0)
 		hw_cfg->bst_type = val;
+
+	if (device_property_read_bool(dev, "cirrus,shared-boost-passive")) {
+		hw_cfg->shared_boost = SHARED_BOOST_PASSIVE;
+	}
+
+	if (device_property_read_bool(dev, "cirrus,shared-boost-active")) {
+		hw_cfg->shared_boost = SHARED_BOOST_ACTIVE;
+	}
 
 	ret = device_property_read_u32(dev, "cirrus,boost-peak-milliamp", &val);
 	if (ret >= 0)
@@ -1280,6 +1353,10 @@ int cs35l41_probe(struct cs35l41_private *cs35l41, const struct cs35l41_hw_cfg *
 	/* Set interrupt masks for critical errors */
 	regmap_write(cs35l41->regmap, CS35L41_IRQ1_MASK1,
 		     CS35L41_INT1_MASK_DEFAULT);
+	if (cs35l41->hw_cfg.shared_boost == SHARED_BOOST_PASSIVE)
+		regmap_write(cs35l41->regmap, CS35L41_IRQ1_MASK3,
+			     CS35L41_INT3_UNMASK_PLL_LOCK);
+
 
 	ret = devm_request_threaded_irq(cs35l41->dev, cs35l41->irq, NULL, cs35l41_irq,
 					IRQF_ONESHOT | IRQF_SHARED | irq_pol,
@@ -1303,12 +1380,12 @@ int cs35l41_probe(struct cs35l41_private *cs35l41, const struct cs35l41_hw_cfg *
 	if (ret < 0)
 		goto err;
 
-	pm_runtime_set_autosuspend_delay(cs35l41->dev, 3000);
-	pm_runtime_use_autosuspend(cs35l41->dev);
-	pm_runtime_mark_last_busy(cs35l41->dev);
-	pm_runtime_set_active(cs35l41->dev);
-	pm_runtime_get_noresume(cs35l41->dev);
-	pm_runtime_enable(cs35l41->dev);
+//	pm_runtime_set_autosuspend_delay(cs35l41->dev, 3000);
+//	pm_runtime_use_autosuspend(cs35l41->dev);
+//	pm_runtime_mark_last_busy(cs35l41->dev);
+//	pm_runtime_set_active(cs35l41->dev);
+//	pm_runtime_get_noresume(cs35l41->dev);
+//	pm_runtime_enable(cs35l41->dev);
 
 	ret = devm_snd_soc_register_component(cs35l41->dev,
 					      &soc_component_dev_cs35l41,
@@ -1318,7 +1395,7 @@ int cs35l41_probe(struct cs35l41_private *cs35l41, const struct cs35l41_hw_cfg *
 		goto err_pm;
 	}
 
-	pm_runtime_put_autosuspend(cs35l41->dev);
+//	pm_runtime_put_autosuspend(cs35l41->dev);
 
 	dev_info(cs35l41->dev, "Cirrus Logic CS35L41 (%x), Revision: %02X\n",
 		 regid, reg_revid);
@@ -1345,6 +1422,9 @@ void cs35l41_remove(struct cs35l41_private *cs35l41)
 	pm_runtime_disable(cs35l41->dev);
 
 	regmap_write(cs35l41->regmap, CS35L41_IRQ1_MASK1, 0xFFFFFFFF);
+	if (cs35l41->hw_cfg.shared_boost == SHARED_BOOST_PASSIVE)
+		regmap_write(cs35l41->regmap, CS35L41_IRQ1_MASK3,
+			     CS35L41_INT3_MASK_DEFAULT);
 	kfree(cs35l41->dsp.system_name);
 	wm_adsp2_remove(&cs35l41->dsp);
 	cs35l41_safe_reset(cs35l41->regmap, cs35l41->hw_cfg.bst_type);

@@ -20,6 +20,8 @@
 #include <uapi/sound/sof/fw.h>
 #include <sound/sof/ext_manifest.h>
 
+struct snd_sof_pcm_stream;
+
 /* Flag definitions used in sof_core_debug (sof_debug module parameter) */
 #define SOF_DBG_ENABLE_TRACE	BIT(0)
 #define SOF_DBG_RETAIN_CTX	BIT(1)	/* prevent DSP D3 on FW exception */
@@ -110,6 +112,7 @@ struct sof_compr_stream {
 	u32 sampling_rate;
 	u16 channels;
 	u16 sample_container_bytes;
+	size_t posn_offset;
 };
 
 struct snd_sof_dev;
@@ -136,6 +139,17 @@ struct snd_sof_platform_stream_params {
 	bool cont_update_posn;
 };
 
+/**
+ * struct sof_firmware - Container struct for SOF firmware
+ * @fw:			Pointer to the firmware
+ * @payload_offset:	Offset of the data within the loaded firmware image to be
+ *			loaded to the DSP (skipping for example ext_manifest section)
+ */
+struct sof_firmware {
+	const struct firmware *fw;
+	u32 payload_offset;
+};
+
 /*
  * SOF DSP HW abstraction operations.
  * Used to abstract DSP HW architecture and any IO busses between host CPU
@@ -160,6 +174,10 @@ struct snd_sof_dsp_ops {
 	 * TODO: consider removing these operations and calling respective
 	 * implementations directly
 	 */
+	void (*write8)(struct snd_sof_dev *sof_dev, void __iomem *addr,
+		       u8 value); /* optional */
+	u8 (*read8)(struct snd_sof_dev *sof_dev,
+		    void __iomem *addr); /* optional */
 	void (*write)(struct snd_sof_dev *sof_dev, void __iomem *addr,
 		      u32 value); /* optional */
 	u32 (*read)(struct snd_sof_dev *sof_dev,
@@ -229,12 +247,12 @@ struct snd_sof_dsp_ops {
 
 	/* host read DSP stream data */
 	int (*ipc_msg_data)(struct snd_sof_dev *sdev,
-			    struct snd_pcm_substream *substream,
+			    struct snd_sof_pcm_stream *sps,
 			    void *p, size_t sz); /* mandatory */
 
 	/* host side configuration of the stream's data offset in stream mailbox area */
 	int (*set_stream_data_offset)(struct snd_sof_dev *sdev,
-				      struct snd_pcm_substream *substream,
+				      struct snd_sof_pcm_stream *sps,
 				      size_t posn_offset); /* optional */
 
 	/* pre/post firmware run */
@@ -432,6 +450,11 @@ struct sof_ipc_pcm_ops;
  * @fw_loader:	Pointer to Firmware Loader ops
  * @fw_tracing:	Pointer to Firmware tracing ops
  *
+ * @init:	Optional pointer for IPC related initialization
+ * @exit:	Optional pointer for IPC related cleanup
+ * @post_fw_boot: Optional pointer to execute IPC related tasks after firmware
+ *		boot.
+ *
  * @tx_msg:	Function pointer for sending a 'short' IPC message
  * @set_get_data: Function pointer for set/get data ('large' IPC message). This
  *		function may split up the 'large' message and use the @tx_msg
@@ -452,6 +475,10 @@ struct sof_ipc_ops {
 	const struct sof_ipc_pcm_ops *pcm;
 	const struct sof_ipc_fw_loader_ops *fw_loader;
 	const struct sof_ipc_fw_tracing_ops *fw_tracing;
+
+	int (*init)(struct snd_sof_dev *sdev);
+	void (*exit)(struct snd_sof_dev *sdev);
+	int (*post_fw_boot)(struct snd_sof_dev *sdev);
 
 	int (*tx_msg)(struct snd_sof_dev *sdev, void *msg_data, size_t msg_bytes,
 		      void *reply_data, size_t reply_bytes, bool no_pm);
@@ -486,6 +513,9 @@ struct snd_sof_dev {
 	struct device *dev;
 	spinlock_t ipc_lock;	/* lock for IPC users */
 	spinlock_t hw_lock;	/* lock for HW IO access */
+
+	/* Main, Base firmware image */
+	struct sof_firmware basefw;
 
 	/*
 	 * ASoC components. plat_drv fields are set dynamically so
@@ -729,10 +759,10 @@ int sof_block_read(struct snd_sof_dev *sdev, enum snd_sof_fw_blk_type blk_type,
 		   u32 offset, void *dest, size_t size);
 
 int sof_ipc_msg_data(struct snd_sof_dev *sdev,
-		     struct snd_pcm_substream *substream,
+		     struct snd_sof_pcm_stream *sps,
 		     void *p, size_t sz);
 int sof_set_stream_data_offset(struct snd_sof_dev *sdev,
-			       struct snd_pcm_substream *substream,
+			       struct snd_sof_pcm_stream *sps,
 			       size_t posn_offset);
 
 int sof_stream_pcm_open(struct snd_sof_dev *sdev,
