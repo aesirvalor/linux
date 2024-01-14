@@ -12,7 +12,6 @@
 #include <sound/hda_codec.h>
 #include <sound/soc.h>
 #include <linux/pm_runtime.h>
-#include <linux/spi/spi.h>
 #include "hda_local.h"
 #include "hda_auto_parser.h"
 #include "hda_jack.h"
@@ -997,11 +996,6 @@ static int cs35l41_smart_amp(struct cs35l41_hda *cs35l41)
 	__be32 halo_sts;
 	int ret;
 
-	if (cs35l41->bypass_fw) {
-		dev_warn(cs35l41->dev, "Bypassing Firmware.\n");
-		return 0;
-	}
-
 	ret = cs35l41_init_dsp(cs35l41);
 	if (ret) {
 		dev_warn(cs35l41->dev, "Cannot Initialize Firmware. Error: %d\n", ret);
@@ -1588,56 +1582,12 @@ int cs35l41_get_speaker_id(struct device *dev, int amp_index, int num_amps, int 
 	return speaker_id;
 }
 
-/*
- * Device CLSA010(0/1) doesn't have _DSD so a gpiod_get by the label reset won't work.
- * And devices created by serial-multi-instantiate don't have their device struct
- * pointing to the correct fwnode, so acpi_dev must be used here.
- * And devm functions expect that the device requesting the resource has the correct
- * fwnode.
- */
-static int cs35l41_no_acpi_dsd(struct cs35l41_hda *cs35l41, struct device *physdev, int id,
-			       const char *hid)
-{
-	struct cs35l41_hw_cfg *hw_cfg = &cs35l41->hw_cfg;
-
-	/* check I2C address to assign the index */
-	cs35l41->index = id == 0x40 ? 0 : 1;
-	cs35l41->channel_index = 0;
-	cs35l41->reset_gpio = gpiod_get_index(physdev, NULL, 0, GPIOD_OUT_HIGH);
-	cs35l41->speaker_id = cs35l41_get_speaker_id(physdev, 0, 0, 2);
-	hw_cfg->spk_pos = cs35l41->index;
-	hw_cfg->gpio2.func = CS35L41_INTERRUPT;
-	hw_cfg->gpio2.valid = true;
-	hw_cfg->valid = true;
-
-	if (strncmp(hid, "CLSA0100", 8) == 0) {
-		hw_cfg->bst_type = CS35L41_EXT_BOOST_NO_VSPK_SWITCH;
-	} else if (strncmp(hid, "CLSA0101", 8) == 0) {
-		hw_cfg->bst_type = CS35L41_EXT_BOOST;
-		hw_cfg->gpio1.func = CS35l41_VSPK_SWITCH;
-		hw_cfg->gpio1.valid = true;
-	} else {
-		/*
-		 * Note: CLSA010(0/1) are special cases which use a slightly different design.
-		 * All other HIDs e.g. CSC3551 require valid ACPI _DSD properties to be supported.
-		 */
-		dev_err(cs35l41->dev, "Error: ACPI _DSD Properties are missing for HID %s.\n", hid);
-		hw_cfg->valid = false;
-		hw_cfg->gpio1.valid = false;
-		hw_cfg->gpio2.valid = false;
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 static int cs35l41_hda_read_acpi(struct cs35l41_hda *cs35l41, const char *hid, int id)
 {
 	struct cs35l41_hw_cfg *hw_cfg = &cs35l41->hw_cfg;
 	u32 values[HDA_MAX_COMPONENTS];
 	struct acpi_device *adev;
 	struct device *physdev;
-	struct spi_device *spi;
 	const char *sub;
 	char *property;
 	size_t nval;
@@ -1660,7 +1610,7 @@ static int cs35l41_hda_read_acpi(struct cs35l41_hda *cs35l41, const char *hid, i
 	ret = cs35l41_add_dsd_properties(cs35l41, physdev, id, hid);
 	if (!ret) {
 		dev_info(cs35l41->dev, "Using extra _DSD properties, bypassing _DSD in ACPI\n");
-		goto out;
+		goto put_physdev;
 	}
 
 	property = "cirrus,dev-index";
@@ -1751,19 +1701,7 @@ static int cs35l41_hda_read_acpi(struct cs35l41_hda *cs35l41, const char *hid, i
 		hw_cfg->bst_type = CS35L41_EXT_BOOST;
 
 	hw_cfg->valid = true;
-out:
 	put_device(physdev);
-
-	cs35l41->bypass_fw = false;
-	if (cs35l41->control_bus == SPI) {
-		spi = to_spi_device(cs35l41->dev);
-		if (spi->max_speed_hz < CS35L41_MAX_ACCEPTABLE_SPI_SPEED_HZ) {
-			dev_warn(cs35l41->dev,
-				 "SPI speed is too slow to support firmware download: %d Hz.\n",
-				 spi->max_speed_hz);
-			cs35l41->bypass_fw = true;
-		}
-	}
 
 	return 0;
 
@@ -1773,13 +1711,14 @@ err:
 	hw_cfg->gpio1.valid = false;
 	hw_cfg->gpio2.valid = false;
 	acpi_dev_put(cs35l41->dacpi);
+put_physdev:
 	put_device(physdev);
 
 	return ret;
 }
 
 int cs35l41_hda_probe(struct device *dev, const char *device_name, int id, int irq,
-		      struct regmap *regmap, enum control_bus control_bus)
+		      struct regmap *regmap)
 {
 	unsigned int regid, reg_revid;
 	struct cs35l41_hda *cs35l41;
@@ -1798,7 +1737,6 @@ int cs35l41_hda_probe(struct device *dev, const char *device_name, int id, int i
 	cs35l41->dev = dev;
 	cs35l41->irq = irq;
 	cs35l41->regmap = regmap;
-	cs35l41->control_bus = control_bus;
 	dev_set_drvdata(dev, cs35l41);
 
 	ret = cs35l41_hda_read_acpi(cs35l41, device_name, id);

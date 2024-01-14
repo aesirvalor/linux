@@ -20,8 +20,6 @@
 #include <linux/firmware/cirrus/cs_dsp.h>
 #include <linux/firmware/cirrus/wmfw.h>
 
-#define CS35L41_MAX_ACCEPTABLE_SPI_SPEED_HZ	1000000
-
 struct cs35l41_amp_cal_data {
 	u32 calTarget[2];
 	u32 calTime[2];
@@ -46,11 +44,6 @@ enum cs35l41_hda_gpio_function {
 	CS35l41_VSPK_SWITCH,
 	CS35L41_INTERRUPT,
 	CS35l41_SYNC,
-};
-
-enum control_bus {
-	I2C,
-	SPI
 };
 
 struct cs35l41_hda {
@@ -81,9 +74,6 @@ struct cs35l41_hda {
 	struct cs_dsp cs_dsp;
 	struct acpi_device *dacpi;
 	bool mute_override;
-	enum control_bus control_bus;
-	bool bypass_fw;
-
 };
 
 enum halo_state {
@@ -95,7 +85,7 @@ enum halo_state {
 extern const struct dev_pm_ops cs35l41_hda_pm_ops;
 
 int cs35l41_hda_probe(struct device *dev, const char *device_name, int id, int irq,
-		      struct regmap *regmap, enum control_bus control_bus);
+		      struct regmap *regmap);
 void cs35l41_hda_remove(struct device *dev);
 int cs35l41_get_speaker_id(struct device *dev, int amp_index, int num_amps, int fixed_gpio_id);
 
