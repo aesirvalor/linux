@@ -509,7 +509,7 @@ enum dcn_zstate_support_state {
 };
 
 /**
- * struct dc_clocks - DC pipe clocks
+ * dc_clocks - DC pipe clocks
  *
  * For any clocks that may differ per pipe only the max is stored in this
  * structure
@@ -540,7 +540,7 @@ struct dc_clocks {
 	bool fclk_prev_p_state_change_support;
 	int num_ways;
 
-	/*
+	/**
 	 * @fw_based_mclk_switching
 	 *
 	 * DC has a mechanism that leverage the variable refresh rate to switch
