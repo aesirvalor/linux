@@ -340,7 +340,7 @@ static int asus_raw_event(struct hid_device *hdev,
 	return 0;
 }
 
-int asus_kbd_set_report(struct hid_device *hdev, const u8 *buf, size_t buf_size)
+static int asus_kbd_set_report(struct hid_device *hdev, const u8 *buf, size_t buf_size)
 {
 	unsigned char *dmabuf;
 	int ret;
