@@ -1,0 +1,452 @@
+## Use git log  --no-merges  HEAD..v6.1.76 -- drivers/gpu/drm/amd/** | cat > amdgpu-patches-details.txt to generate a commits-only list
+## then manually exclude commits already merged it
+
+# this is throwing up a conflict
+commit b59e08c872e0995328bbcd765f07f747d98b3ba4
+Author: Wayne Lin <wayne.lin@amd.com>
+Date:   Mon Dec 4 10:09:33 2023 +0800
+
+    drm/amd/display: pbn_div need be updated for hotplug event
+    
+    commit 9cdef4f720376ef0fb0febce1ed2377c19e531f9 upstream.
+    
+    link_rate sometime will be changed when DP MST connector hotplug, so
+    pbn_div also need be updated; otherwise, it will mismatch with
+    link_rate, causes no output in external monitor.
+    
+    This is a backport to 6.7 and older.
+    
+    Cc: stable@vger.kernel.org
+    Tested-by: Daniel Wheeler <daniel.wheeler@amd.com>
+    Reviewed-by: Jerry Zuo <jerry.zuo@amd.com>
+    Acked-by: Rodrigo Siqueira <rodrigo.siqueira@amd.com>
+    Signed-off-by: Wade Wang <wade.wang@hp.com>
+    Signed-off-by: Wayne Lin <wayne.lin@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+# I am unsure if this is a good idea
+commit d551c77727b7177ca4915128b87a896e71343de9
+Author: Dmytro Laktyushkin <dmytro.laktyushkin@amd.com>
+Date:   Fri Nov 3 14:55:37 2023 -0400
+
+    drm/amd/display: update dcn315 lpddr pstate latency
+    
+    [ Upstream commit c92da0403d373c03ea5c65c0260c7db6762013b0 ]
+    
+    [WHY/HOW]
+    Increase the pstate latency to improve ac/dc transition
+    
+    Reviewed-by: Charlene Liu <charlene.liu@amd.com>
+    Acked-by: Tom Chung <chiahsuan.chung@amd.com>
+    Signed-off-by: Dmytro Laktyushkin <dmytro.laktyushkin@amd.com>
+    Tested-by: Daniel Wheeler <daniel.wheeler@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# skipped untested as all EEPROM stuff has been modified by valve
+commit c8bf22e0d0499de0692a91290f923029230a5bd4
+Author: Candice Li <candice.li@amd.com>
+Date:   Fri Nov 24 09:33:47 2023 +0800
+
+    drm/amdgpu: Update EEPROM I2C address for smu v13_0_0
+    
+    [ Upstream commit e0409021e34af50e7b6f31635c8d21583d7c43dd ]
+    
+    Check smu v13_0_0 SKU type to select EEPROM I2C address.
+    
+    Signed-off-by: Candice Li <candice.li@amd.com>
+    Reviewed-by: Hawking Zhang <Hawking.Zhang@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Cc: stable@vger.kernel.org # 6.1.x
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# skipped untested as all EEPROM stuff has been modified by valve
+commit 87509778718cffdee6412f0d39713f883208a013
+Author: Candice Li <candice.li@amd.com>
+Date:   Tue Aug 1 21:23:49 2023 +0800
+
+    drm/amdgpu: Add I2C EEPROM support on smu v13_0_6
+    
+    [ Upstream commit b81fde0dfe402e864ef1ac506eba756c89f1ad32 ]
+    
+    Support I2C EEPROM on smu v13_0_6.
+    
+    v2: Move IP_VERSION(13, 0, 6) ahead of IP_VERSION(13, 0, 10).
+    
+    Signed-off-by: Candice Li <candice.li@amd.com>
+    Reviewed-by: Yang Wang <kevinyang.wang@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# skipped untested as all EEPROM stuff has been modified by valve
+commit 4ccb34d4313b81d6268b1e68bd9a4e7309f096f6
+Author: Alex Deucher <alexander.deucher@amd.com>
+Date:   Mon Mar 27 20:09:08 2023 -0400
+
+    drm/amdgpu: simplify amdgpu_ras_eeprom.c
+    
+    [ Upstream commit 6246059a19d4cd32ef1af42a6ab016b779cd68c4 ]
+    
+    All chips that support RAS also support IP discovery, so
+    use the IP versions rather than a mix of IP versions and
+    asic types.  Checking the validity of the atom_ctx pointer
+    is not required as the vbios is already fetched at this
+    point.
+    
+    v2: add comments to id asic types based on feedback from Luben
+    
+    Reviewed-by: Luben Tuikov <luben.tuikov@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Cc: Luben Tuikov <luben.tuikov@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# skipped untested as all EEPROM stuff has been modified by valve
+commit af6b1f1156fc2d886251a076b87243597301437c
+Author: Luben Tuikov <luben.tuikov@amd.com>
+Date:   Thu Mar 23 01:46:41 2023 -0400
+
+    drm/amdgpu: Return from switch early for EEPROM I2C address
+    
+    [ Upstream commit 8782007b5f5795f118c5167f46d8c8142abcc92f ]
+    
+    As soon as control->i2c_address is set, return; remove the "break;" from the
+    switch--it is unnecessary. This mimics what happens when for some cases in the
+    switch, we call helper functions with "return <helper function>".
+    
+    Remove final function "return true;" to indicate that the switch is final and
+    terminal, and that there should be no code after the switch.
+    
+    Cc: Candice Li <candice.li@amd.com>
+    Cc: Kent Russell <kent.russell@amd.com>
+    Cc: Alex Deucher <Alexander.Deucher@amd.com>
+    Signed-off-by: Luben Tuikov <luben.tuikov@amd.com>
+    Reviewed-by: Alex Deucher <Alexander.Deucher@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# skipped untested as all EEPROM stuff has been modified by valve
+commit a3049c9a30131639f056a2b3db934c70ff91068a
+Author: Luben Tuikov <luben.tuikov@amd.com>
+Date:   Thu Mar 23 00:56:26 2023 -0400
+
+    drm/amdgpu: Remove second moot switch to set EEPROM I2C address
+    
+    [ Upstream commit 1bb745d7596d2b368fd9afb90473f3581495e39d ]
+    
+    Remove second switch since it already has its own function and case in the
+    first switch. This also avoids requalifying the EEPROM I2C address for VEGA20,
+    SIENNA CICHLID, and ALDEBARAN, as those have been set by the first switch and
+    shouldn't match SMU v13.0.x.
+    
+    Cc: Candice Li <candice.li@amd.com>
+    Cc: Kent Russell <kent.russell@amd.com>
+    Cc: Alex Deucher <Alexander.Deucher@amd.com>
+    Fixes: 158225294683 ("drm/amdgpu: Add EEPROM I2C address for smu v13_0_0")
+    Fixes: c9bdc6c3cf39 ("drm/amdgpu: Add EEPROM I2C address support for ip discovery")
+    Signed-off-by: Luben Tuikov <luben.tuikov@amd.com>
+    Reviewed-by: Alex Deucher <Alexander.Deucher@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# skipped untested as all EEPROM stuff has been modified by valve
+commit 30289057ef8f8accd98ee41221c859a471f20c5c
+Author: Luben Tuikov <luben.tuikov@amd.com>
+Date:   Tue Nov 15 00:36:03 2022 -0500
+
+    drm/amdgpu: Add support for RAS table at 0x40000
+    
+    [ Upstream commit 64a3dbb06ad88d89a0958ccafc4f01611657f641 ]
+    
+    Add support for RAS table at I2C EEPROM address of 0x40000, since on some
+    ASICs it is not at 0, but at 0x40000.
+    
+    Cc: Alex Deucher <Alexander.Deucher@amd.com>
+    Cc: Kent Russell <kent.russell@amd.com>
+    Signed-off-by: Luben Tuikov <luben.tuikov@amd.com>
+    Tested-by: Kent Russell <kent.russell@amd.com>
+    Reviewed-by: Kent Russell <kent.russell@amd.com>
+    Reviewed-by: Alex Deucher <Alexander.Deucher@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# this is throwing up a conflict
+commit c67c553b4dd9a315919ae8990da367523fad0e38
+Author: Luben Tuikov <luben.tuikov@amd.com>
+Date:   Mon Nov 7 12:38:03 2022 -0500
+
+    drm/amdgpu: Decouple RAS EEPROM addresses from chips
+    
+    [ Upstream commit 3b8164f8084ff7888ed24970efa230ff5d36eda8 ]
+    
+    Abstract RAS I2C EEPROM addresses from chip names, and set their macro
+    definition names to the address they set, not the chip they attach
+    to. Since most chips either use I2C EEPROM address 0 or 40000h for the RAS
+    table start offset, this leaves us with only two macro definitions as
+    opposed to five, and removes the redundancy of four.
+    
+    Cc: Candice Li <candice.li@amd.com>
+    Cc: Tao Zhou <tao.zhou1@amd.com>
+    Cc: Alex Deucher <Alexander.Deucher@amd.com>
+    Signed-off-by: Luben Tuikov <luben.tuikov@amd.com>
+    Reviewed-by: Kent Russell <kent.russell@amd.com>
+    Reviewed-by: Alex Deucher <Alexander.Deucher@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# skipped untested as all EEPROM stuff has been modified by valve
+commit ee9efcdc76af0dcb51579aa61c5019eabce93d73
+Author: Luben Tuikov <luben.tuikov@amd.com>
+Date:   Mon Nov 7 12:06:44 2022 -0500
+
+    drm/amdgpu: Remove redundant I2C EEPROM address
+    
+    [ Upstream commit da858deab88eb561f2196bc99b6dbd2320e56456 ]
+    
+    Remove redundant EEPROM_I2C_MADDR_54H address, since we already have it
+    represented (ARCTURUS), and since we don't include the I2C device type
+    identifier in EEPROM memory addresses, i.e. that high up in the device
+    abstraction--we only use EEPROM memory addresses, as memory is continuously
+    represented by EEPROM device(s) on the I2C bus.
+    
+    Add a comment describing what these memory addresses are, how they come
+    about and how they're usually extracted from the device address byte.
+    
+    Cc: Candice Li <candice.li@amd.com>
+    Cc: Tao Zhou <tao.zhou1@amd.com>
+    Cc: Alex Deucher <Alexander.Deucher@amd.com>
+    Fixes: c9bdc6c3cf39df ("drm/amdgpu: Add EEPROM I2C address support for ip discovery")
+    Signed-off-by: Luben Tuikov <luben.tuikov@amd.com>
+    Reviewed-by: Alex Deucher <Alexander.Deucher@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# this is throwing up a conflict
+commit a945568638acfc7d2d95de520849857506b21252
+Author: Candice Li <candice.li@amd.com>
+Date:   Tue Oct 11 15:08:38 2022 +0800
+
+    drm/amdgpu: Add EEPROM I2C address support for ip discovery
+    
+    [ Upstream commit c9bdc6c3cf39df6db9c611d05fc512b1276b1cc8 ]
+    
+    1. Update EEPROM_I2C_MADDR_SMU_13_0_0 to EEPROM_I2C_MADDR_54H
+    2. Add EEPROM I2C address support for smu v13_0_0 and v13_0_10.
+    
+    Signed-off-by: Candice Li <candice.li@amd.com>
+    Reviewed-by: Tao Zhou <tao.zhou1@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# this is throwing up a conflict
+commit f549f837b9aca23983540fc6498e19eee8b3073a
+Author: Candice Li <candice.li@amd.com>
+Date:   Mon Oct 10 16:26:37 2022 +0800
+
+    drm/amdgpu: Update ras eeprom support for smu v13_0_0 and v13_0_10
+    
+    [ Upstream commit bc22f8ec464af9e14263c3ed6a1c2be86618c804 ]
+    
+    Enable RAS EEPROM support for smu v13_0_0 and v13_0_10.
+    
+    Signed-off-by: Candice Li <candice.li@amd.com>
+    Reviewed-by: Hawking Zhang <Hawking.Zhang@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Stable-dep-of: e0409021e34a ("drm/amdgpu: Update EEPROM I2C address for smu v13_0_0")
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# this seems bad to me
+commit 859a3a9f1e6b4055fd96695d11defca050ecf5cf
+Author: Nicholas Kazlauskas <nicholas.kazlauskas@amd.com>
+Date:   Wed Nov 8 10:59:00 2023 -0500
+
+    drm/amd/display: Update min Z8 residency time to 2100 for DCN314
+    
+    commit 4636a211980052ca0df90265c8a3ed2d46099091 upstream.
+    
+    [Why]
+    Some panels with residency period of 2054 exhibit flickering with
+    Z8 at the end of the frame.
+    
+    [How]
+    As a workaround, increase the limit to block these panels.
+    
+    Cc: stable@vger.kernel.org # 6.1+
+    Reviewed-by: Syed Hassan <syed.hassan@amd.com>
+    Acked-by: Hamza Mahfooz <hamza.mahfooz@amd.com>
+    Signed-off-by: Nicholas Kazlauskas <nicholas.kazlauskas@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+# this seems bad to me
+commit a67c18704706e0a9ccac9b7002e678d325aea123
+Author: Nicholas Kazlauskas <nicholas.kazlauskas@amd.com>
+Date:   Wed Nov 8 10:55:53 2023 -0500
+
+    drm/amd/display: Remove min_dst_y_next_start check for Z8
+    
+    commit 08448812acb2ab701cd5ff7e1a1dc97f7f10260c upstream.
+    
+    [Why]
+    Flickering occurs on DRR supported panels when engaged in DRR due to
+    min_dst_y_next becoming larger than the frame size itself.
+    
+    [How]
+    In general, we should be able to enter Z8 when this is engaged but it
+    might be a net power loss even if the calculation wasn't bugged.
+    
+    Don't support enabling Z8 during the DRR region.
+    
+    Cc: stable@vger.kernel.org # 6.1+
+    Reviewed-by: Syed Hassan <syed.hassan@amd.com>
+    Acked-by: Hamza Mahfooz <hamza.mahfooz@amd.com>
+    Signed-off-by: Nicholas Kazlauskas <nicholas.kazlauskas@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+# this is throwing up a conflict
+commit 4c55be0855344187d0970874b6e1215b21a68b61
+Author: Lewis Huang <lewis.huang@amd.com>
+Date:   Thu Oct 19 17:22:21 2023 +0800
+
+    drm/amd/display: Change the DMCUB mailbox memory location from FB to inbox
+    
+    commit 5911d02cac70d7fb52009fbd37423e63f8f6f9bc upstream.
+    
+    [WHY]
+    Flush command sent to DMCUB spends more time for execution on
+    a dGPU than on an APU. This causes cursor lag when using high
+    refresh rate mouses.
+    
+    [HOW]
+    1. Change the DMCUB mailbox memory location from FB to inbox.
+    2. Only change windows memory to inbox.
+    
+    Cc: Mario Limonciello <mario.limonciello@amd.com>
+    Cc: Alex Deucher <alexander.deucher@amd.com>
+    Cc: stable@vger.kernel.org
+    Reviewed-by: Nicholas Kazlauskas <nicholas.kazlauskas@amd.com>
+    Acked-by: Alex Hung <alex.hung@amd.com>
+    Signed-off-by: Lewis Huang <lewis.huang@amd.com>
+    Tested-by: Daniel Wheeler <daniel.wheeler@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+# this is throwing up a conflict
+commit 03e334565d2d67673d7405b5b4a746da0fc20f71
+Author: Michel Dänzer <mdaenzer@redhat.com>
+Date:   Mon Oct 2 16:16:49 2023 +0200
+
+    drm/amd/display: Bail from dm_check_crtc_cursor if no relevant change
+    
+    [ Upstream commit bc0b79ce2050aa523c38c96b6d26340a96bfbdca ]
+    
+    If no plane was newly enabled or changed scaling, there can be no new
+    scaling mismatch with the cursor plane.
+    
+    By not pulling non-cursor plane states into all atomic commits while
+    the cursor plane is enabled, this avoids synchronizing all cursor plane
+    changes to vertical blank, which caused the following IGT tests to fail:
+    
+    kms_cursor_legacy@cursor-vs-flip.*
+    kms_cursor_legacy@flip-vs-cursor.*
+    
+    Fixes: 003048ddf44b ("drm/amd/display: Check all enabled planes in dm_check_crtc_cursor")
+    Signed-off-by: Michel Dänzer <mdaenzer@redhat.com>
+    Signed-off-by: Hamza Mahfooz <hamza.mahfooz@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# this is throwing up a conflict
+commit 896066202757b5c890ee670840ba985d48da2e0e
+Author: Michel Dänzer <mdaenzer@redhat.com>
+Date:   Tue Sep 12 12:22:24 2023 +0200
+
+    drm/amd/display: Check all enabled planes in dm_check_crtc_cursor
+    
+    [ Upstream commit 003048ddf44b1a6cfa57afa5a0cf40673e13f1ba ]
+    
+    It was only checking planes which had any state changes in the same
+    commit. However, it also needs to check other enabled planes.
+    
+    Not doing this meant that a commit might spuriously "succeed", resulting
+    in the cursor plane displaying with incorrect scaling. See
+    https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/3177#note_1824263
+    for an example.
+    
+    Fixes: d1bfbe8a3202 ("amd/display: check cursor plane matches underlying plane")
+    Reviewed-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Michel Dänzer <mdaenzer@redhat.com>
+    Signed-off-by: Hamza Mahfooz <hamza.mahfooz@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+# this is throwing up a conflict
+commit 71472872932b11ca2591104eb73255fecaae9d33
+Author: Wayne Lin <wayne.lin@amd.com>
+Date:   Tue Aug 22 16:03:17 2023 +0800
+
+    drm/amd/display: Adjust the MST resume flow
+    
+    commit ec5fa9fcdeca69edf7dab5ca3b2e0ceb1c08fe9a upstream.
+    
+    [Why]
+    In drm_dp_mst_topology_mgr_resume() today, it will resume the
+    mst branch to be ready handling mst mode and also consecutively do
+    the mst topology probing. Which will cause the dirver have chance
+    to fire hotplug event before restoring the old state. Then Userspace
+    will react to the hotplug event based on a wrong state.
+    
+    [How]
+    Adjust the mst resume flow as:
+    1. set dpcd to resume mst branch status
+    2. restore source old state
+    3. Do mst resume topology probing
+    
+    For drm_dp_mst_topology_mgr_resume(), it's better to adjust it to
+    pull out topology probing work into a 2nd part procedure of the mst
+    resume. Will have a follow up patch in drm.
+    
+    Reviewed-by: Chao-kai Wang <stylon.wang@amd.com>
+    Cc: Mario Limonciello <mario.limonciello@amd.com>
+    Cc: Alex Deucher <alexander.deucher@amd.com>
+    Cc: stable@vger.kernel.org
+    Acked-by: Stylon Wang <stylon.wang@amd.com>
+    Signed-off-by: Wayne Lin <wayne.lin@amd.com>
+    Tested-by: Daniel Wheeler <daniel.wheeler@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    [ Adjust for missing variable rename in
+     f0127cb11299 ("drm/amdgpu/display/mst: adjust the naming of mst_port and port of aconnector") ]
+    Signed-off-by: Mario Limonciello <mario.limonciello@amd.com>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+# this is throwing up a conflict
+commit 2d7a6fcb1f232c91fe405161d2ba5731ccb97a34
+Author: Wenjing Liu <wenjing.liu@amd.com>
+Date:   Tue Aug 15 10:47:52 2023 -0400
+
+    drm/amd/display: always switch off ODM before committing more streams
+    
+    commit 49a30c3d1a2258fc93cfe6eea8e4951dabadc824 upstream.
+    
+    ODM power optimization is only supported with single stream. When ODM
+    power optimization is enabled, we might not have enough free pipes for
+    enabling other stream. So when we are committing more than 1 stream we
+    should first switch off ODM power optimization to make room for new
+    stream and then allocating pipe resource for the new stream.
+    
+    Cc: stable@vger.kernel.org
+    Fixes: 59de751e3845 ("drm/amd/display: add ODM case when looking for first split pipe")
+    Reviewed-by: Dillon Varone <dillon.varone@amd.com>
+    Acked-by: Hamza Mahfooz <hamza.mahfooz@amd.com>
+    Signed-off-by: Wenjing Liu <wenjing.liu@amd.com>
+    Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
