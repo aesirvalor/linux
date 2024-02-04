@@ -168,3 +168,6 @@ sphinx_*/
 
 # Rust analyzer configuration
 /rust-project.json
+
+# I am sick of these!
+/tools/bpf/**.h
