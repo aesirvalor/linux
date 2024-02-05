@@ -2581,367 +2581,49 @@ Date:   Sat Dec 31 08:44:33 2022 +0100
     
     Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit e12b2e99b8799f26432528934edc8677888ad72f
-Author: Felix Fietkau <nbd@nbd.name>
-Date:   Fri Nov 11 19:50:46 2022 +0100
 
-    wifi: mt76: mt7615: increase eeprom size for mt7663
-    
-    mt7663 efuse has 0x600 bytes instead of 0x400. Increase the size in order
-    to fix issues with incomplete calibration data
-    
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 9c54548bc9e46217c551ed69fd2f14f4cb5155eb
-Author: Ryder Lee <ryder.lee@mediatek.com>
-Date:   Fri Apr 14 04:23:30 2023 +0800
 
-    wifi: mt76: connac: add nss calculation into mt76_connac2_mac_tx_rate_val()
-    
-    Take nss calculation into account since this function always wrongly
-    returns 0.
-    
-    Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 3d2892e05086d09aecf14ea64b2debbf495e313c
-Author: Ryder Lee <ryder.lee@mediatek.com>
-Date:   Fri Apr 14 04:23:29 2023 +0800
 
-    wifi: mt76: connac: fix txd multicast rate setting
-    
-    The vif->bss_conf.mcast_rate should be applied to multicast data frame
-    only.
-    
-    Fixes: 182071cdd594 ("mt76: connac: move connac2_mac_write_txwi in mt76_connac module")
-    Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 3d78c46423c6567ed25ca033e086865b1b4d5ae1
-Author: Quan Zhou <quan.zhou@mediatek.com>
-Date:   Thu Apr 13 05:11:14 2023 +0800
 
-    wifi: mt76: mt7921e: stop chip reset worker in unregister hook
-    
-    If the chip reset worker is triggered during the remove process, the chip
-    DMA may not be properly pushed back to the idle state. This can lead to
-    corruption of the DMA flow due to the chip reset. Therefore, it is
-    necessary to stop the chip reset before the DMA is finalized.
-    
-    To avoid resetting the chip after the reset worker is cancelled, use
-    __mt7921_mcu_drv_pmctrl() instead of mt7921_mcu_drv_pmctrl(). It is safe to
-    ignore the pm mutex because the pm worker and wake worker have already been
-    cancelled.
-    
-    Fixes: 033ae79b3830 ("mt76: mt7921: refactor init.c to be bus independent")
-    Co-developed-by: Sean Wang <sean.wang@mediatek.com>
-    Signed-off-by: Sean Wang <sean.wang@mediatek.com>
-    Co-developed-by: Deren Wu <deren.wu@mediatek.com>
-    Signed-off-by: Deren Wu <deren.wu@mediatek.com>
-    Co-developed-by: Wang Zhao <wang.zhao@mediatek.com>
-    Signed-off-by: Wang Zhao <wang.zhao@mediatek.com>
-    Signed-off-by: Quan Zhou <quan.zhou@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 87714bf6ed1589813e473db5471e6e9857755764
-Author: Quan Zhou <quan.zhou@mediatek.com>
-Date:   Thu Apr 13 05:11:13 2023 +0800
 
-    wifi: mt76: mt7921e: improve reliability of dma reset
-    
-    The hardware team has advised the driver that it is necessary to first put
-    WFDMA into an idle state before resetting the WFDMA. Otherwise, the WFDMA
-    may enter an unknown state where it cannot be polled with the right state
-    successfully. To ensure that the DMA can work properly while a stressful
-    cold reboot test was being made, we have reordered the programming sequence
-    in the driver based on the hardware team's guidance.
-    
-    The patch would modify the WFDMA disabling flow from
-    
-    "DMA reset -> disabling DMASHDL -> disabling WFDMA -> polling and waiting
-    until DMA idle" to "disabling WFDMA -> polling and waiting for DMA idle ->
-    disabling DMASHDL -> DMA reset.
-    
-    Where he polling and waiting until WFDMA is idle is coordinated with the
-    operation of disabling WFDMA. Even while WFDMA is being disabled, it can
-    still handle Tx/Rx requests. The additional polling allows sufficient time
-    for WFDMA to process the last T/Rx request. When the idle state of WFDMA is
-    reached, it is a reliable indication that DMASHDL is also idle to ensure it
-    is safe to disable it and perform the DMA reset.
-    
-    Fixes: 0a1059d0f060 ("mt76: mt7921: move mt7921_dma_reset in dma.c")
-    Co-developed-by: Sean Wang <sean.wang@mediatek.com>
-    Signed-off-by: Sean Wang <sean.wang@mediatek.com>
-    Co-developed-by: Deren Wu <deren.wu@mediatek.com>
-    Signed-off-by: Deren Wu <deren.wu@mediatek.com>
-    Co-developed-by: Wang Zhao <wang.zhao@mediatek.com>
-    Signed-off-by: Wang Zhao <wang.zhao@mediatek.com>
-    Signed-off-by: Quan Zhou <quan.zhou@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 5c47cdebbaeb7724df6f9f46917c93e53f791547
-Author: Jiefeng Li <jiefeng_li@hust.edu.cn>
-Date:   Wed Apr 12 14:22:34 2023 +0800
 
-    wifi: mt76: mt7921: fix missing unwind goto in `mt7921u_probe`
-    
-    `mt7921u_dma_init` can only return zero or negative number according to its
-    definition. When it returns non-zero number, there exists an error and this
-    function should handle this error rather than return directly.
-    
-    Fixes: 0d2afe09fad5 ("mt76: mt7921: add mt7921u driver")
-    Signed-off-by: Jiefeng Li <jiefeng_li@hust.edu.cn>
-    Reviewed-by: Dongliang Mu <dzm91@hust.edu.cn>
-    Reviewed-by: Sridhar Samudrala <sridhar.samudrala@intel.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 12db28c3ef31f719bd18fa186a40bb152e6a527c
-Author: Sean Wang <sean.wang@mediatek.com>
-Date:   Wed Apr 12 05:23:11 2023 +0800
 
-    mt76: mt7921: fix kernel panic by accessing unallocated eeprom.data
-    
-    The MT7921 driver no longer uses eeprom.data, but the relevant code has not
-    been removed completely since
-    commit 16d98b548365 ("mt76: mt7921: rely on mcu_get_nic_capability").
-    This could result in potential invalid memory access.
-    
-    To fix the kernel panic issue in mt7921, it is necessary to avoid accessing
-    unallocated eeprom.data which can lead to invalid memory access.
-    
-    Furthermore, it is possible to entirely eliminate the
-    mt7921_mcu_parse_eeprom function and solely depend on
-    mt7921_mcu_parse_response to divide the RxD header.
-    
-    [2.702735] BUG: kernel NULL pointer dereference, address: 0000000000000550
-    [2.702740] #PF: supervisor write access in kernel mode
-    [2.702741] #PF: error_code(0x0002) - not-present page
-    [2.702743] PGD 0 P4D 0
-    [2.702747] Oops: 0002 [#1] PREEMPT SMP NOPTI
-    [2.702755] RIP: 0010:mt7921_mcu_parse_response+0x147/0x170 [mt7921_common]
-    [2.702758] RSP: 0018:ffffae7c00fef828 EFLAGS: 00010286
-    [2.702760] RAX: ffffa367f57be024 RBX: ffffa367cc7bf500 RCX: 0000000000000000
-    [2.702762] RDX: 0000000000000550 RSI: 0000000000000000 RDI: ffffa367cc7bf500
-    [2.702763] RBP: ffffae7c00fef840 R08: ffffa367cb167000 R09: 0000000000000005
-    [2.702764] R10: 0000000000000000 R11: ffffffffc04702e4 R12: ffffa367e8329f40
-    [2.702766] R13: 0000000000000000 R14: 0000000000000001 R15: ffffa367e8329f40
-    [2.702768] FS:  000079ee6cf20c40(0000) GS:ffffa36b2f940000(0000) knlGS:0000000000000000
-    [2.702769] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-    [2.702775] CR2: 0000000000000550 CR3: 00000001233c6004 CR4: 0000000000770ee0
-    [2.702776] PKRU: 55555554
-    [2.702777] Call Trace:
-    [2.702782]  mt76_mcu_skb_send_and_get_msg+0xc3/0x11e [mt76 <HASH:1bc4 5>]
-    [2.702785]  mt7921_run_firmware+0x241/0x853 [mt7921_common <HASH:6a2f 6>]
-    [2.702789]  mt7921e_mcu_init+0x2b/0x56 [mt7921e <HASH:d290 7>]
-    [2.702792]  mt7921_register_device+0x2eb/0x5a5 [mt7921_common <HASH:6a2f 6>]
-    [2.702795]  ? mt7921_irq_tasklet+0x1d4/0x1d4 [mt7921e <HASH:d290 7>]
-    [2.702797]  mt7921_pci_probe+0x2d6/0x319 [mt7921e <HASH:d290 7>]
-    [2.702799]  pci_device_probe+0x9f/0x12a
-    
-    Fixes: 16d98b548365 ("mt76: mt7921: rely on mcu_get_nic_capability")
-    Signed-off-by: Sean Wang <sean.wang@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 61d1f54533496711e06fcfd42b93c5ded9e27c7a
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Wed Apr 5 12:38:53 2023 +0200
 
-    wifi: mt76: move mcu_uni_event and mcu_reg_event in common code
-    
-    mcu_uni_event and mcu_reg_event structs are shared between mt7921 and
-    mt7615 drivers, so move them in connac lib.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 672662f0742bf51584b871939703e3deb4beec27
-Author: Ryder Lee <ryder.lee@mediatek.com>
-Date:   Wed Apr 5 07:24:38 2023 +0800
 
-    wifi: mt76: mt7996: add full system reset knobs into debugfs
-    
-    Add testing points into debugfs to trigger firmware assert and enable
-    full system recovery. Also rename knob "fw_ser" to a clear-cut name
-    "sys_recovery".
-    
-    Co-developed-by: Bo Jiao <Bo.Jiao@mediatek.com>
-    Signed-off-by: Bo Jiao <Bo.Jiao@mediatek.com>
-    Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 1b83d17ccece7db5e0ad4602969c1146f1381c3d
-Author: Sean Wang <sean.wang@mediatek.com>
-Date:   Wed Mar 8 05:50:59 2023 +0800
 
-    wifi: mt76: mt7921: enable p2p support
-    
-    Introduce p2p-go/p2p-client support to mt7921 driver
-    
-    CONNECTION_P2P_GC/GO is not supported with the current firmware
-    so we added mt76_dev to mt76_connac_mcu_sta_basic_tlv signature to
-    use CONNECTION_INFRA_STA/AP instead for p2p-client and p2p-go
-    respectively to make it work.
-    
-    Signed-off-by: Sean Wang <sean.wang@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 6d6793cef6a491b8f6db5f40ef3334411293da32
-Author: Gustavo A. R. Silva <gustavoars@kernel.org>
-Date:   Fri Mar 17 14:56:39 2023 -0600
 
-    wifi: mt76: mt7921: Replace fake flex-arrays with flexible-array members
-    
-    Zero-length arrays as fake flexible arrays are deprecated and we are
-    moving towards adopting C99 flexible-array members instead.
-    
-    Address the following warnings found with GCC-13 and
-    -fstrict-flex-arrays=3 enabled:
-    drivers/net/wireless/mediatek/mt76/mt7921/acpi_sar.c:266:25: warning: array subscript 0 is outside array bounds of ‘struct mt7921_asar_dyn_limit_v2[0]’ [-Warray-bounds=]
-    drivers/net/wireless/mediatek/mt76/mt7921/acpi_sar.c:263:25: warning: array subscript 0 is outside array bounds of ‘struct mt7921_asar_dyn_limit[0]’ [-Warray-bounds=]
-    drivers/net/wireless/mediatek/mt76/mt7921/acpi_sar.c:223:28: warning: array subscript <unknown> is outside array bounds of ‘struct mt7921_asar_geo_limit_v2[0]’ [-Warray-bounds=]
-    drivers/net/wireless/mediatek/mt76/mt7921/acpi_sar.c:220:28: warning: array subscript <unknown> is outside array bounds of ‘struct mt7921_asar_geo_limit[0]’ [-Warray-bounds=]
-    drivers/net/wireless/mediatek/mt76/mt7921/acpi_sar.c:334:37: warning: array subscript i is outside array bounds of ‘u8[0]’ {aka ‘unsigned char[]’} [-Warray-bounds=]
-    
-    Notice that the DECLARE_FLEX_ARRAY() helper allows for flexible-array
-    members in unions.
-    
-    This helps with the ongoing efforts to tighten the FORTIFY_SOURCE
-    routines on memcpy() and help us make progress towards globally
-    enabling -fstrict-flex-arrays=3 [1].
-    
-    Link: https://github.com/KSPP/linux/issues/21
-    Link: https://github.com/KSPP/linux/issues/272
-    Link: https://gcc.gnu.org/pipermail/gcc-patches/2022-October/602902.html [1]
-    Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-    Reviewed-by: Simon Horman <simon.horman@corigine.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 2631c5b6ef9d7c6707e020def6947464c8aa6f92
-Author: Gustavo A. R. Silva <gustavoars@kernel.org>
-Date:   Thu Apr 6 08:32:12 2023 -0600
 
-    wifi: mt76: Replace zero-length array with flexible-array member
-    
-    Zero-length arrays are deprecated [1] and have to be replaced by C99
-    flexible-array members.
-    
-    This helps with the ongoing efforts to tighten the FORTIFY_SOURCE routines
-    on memcpy() and help to make progress towards globally enabling
-    -fstrict-flex-arrays=3 [2]
-    
-    Link: https://github.com/KSPP/linux/issues/78 [1]
-    Link: https://gcc.gnu.org/pipermail/gcc-patches/2022-October/602902.html [2]
-    Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-    Reviewed-by: Simon Horman <simon.horman@corigine.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 03eb52dd78cab08f13925aeec8315fbdbcba3253
-Author: Reese Russell <git@qrsnap.io>
-Date:   Tue Apr 4 00:35:12 2023 -0700
 
-    wifi: mt76: mt7921: add Netgear AXE3000 (A8000) support
-    
-    Issue: Though the Netgear AXE3000 (A8000) is based on the mt7921
-    chipset because of the unique USB VID:PID combination this device
-    does not initialize/register. Thus making it not plug and play.
-    
-    Fix: Adds support for the Netgear AXE3000 (A8000) based on the Mediatek
-    mt7921au chipset. The method of action is adding the USD VID/PID
-    pair to the mt7921u_device_table[] array.
-    
-    Notes: A retail sample of the Netgear AXE3000 (A8000) yeilds the following
-    from lsusb D 0846:9060 NetGear, Inc. Wireless_Device. This pair
-    0846:9060 VID:PID has been reported by other users on Github.
-    
-    Signed-off-by: Reese Russell <git@qrsnap.io>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 268079896060b224cb0a42eb6ca0d0a0836c46bb
-Author: Ryder Lee <ryder.lee@mediatek.com>
-Date:   Fri Mar 31 06:10:17 2023 +0800
 
-    wifi: mt76: mt7915: drop redundant prefix of mt7915_txpower_puts()
-    
-    Just a cosmetic patch to drop redundant prefix for txpower ouput text.
-    
-    Signed-off-by: Ryder Lee <ryder.lee@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 23792cedaff02351b57bddd8957fc917fa88f2e0
-Author: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
-Date:   Thu Mar 23 21:26:12 2023 +0800
 
-    wifi: mt76: fix 6GHz high channel not be scanned
-    
-    mt76 scan command only support 64 channels currently. If the
-    channel count is larger than 64(for 2+5+6GHz), some channels will
-    not be scanned. Hence change the scan type to full channel scan
-    in case of the command cannot include proper list for chip.
-    
-    Fixes: 399090ef9605 ("mt76: mt76_connac: move hw_scan and sched_scan routine in mt76_connac_mcu module")
-    Reported-by: Ben Greear <greearb@candelatech.com>
-    Tested-by: Isaac Konikoff <konikofi@candelatech.com>
-    Signed-off-by: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
-    Signed-off-by: Deren Wu <deren.wu@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit c397fc1e6365a2a9e5540a85b2c1d4ea412aa0e2
-Author: Quan Zhou <quan.zhou@mediatek.com>
-Date:   Sat Mar 18 15:41:12 2023 +0800
 
-    wifi: mt76: mt7921e: fix probe timeout after reboot
-    
-    In system warm reboot scene, due to the polling timeout(now 1000us)
-    is too short to wait dma idle in time, it may make driver probe fail
-    with error code -ETIMEDOUT. Meanwhile, we also found the dma may take
-    around 70ms to enter idle state. Change the polling idle timeout to
-    100ms to avoid the probabilistic probe fail.
-    
-    Tested pass with 5000 times warm reboot on x86 platform.
-    
-    [4.477496] pci 0000:01:00.0: attach allowed to drvr mt7921e [internal device]
-    [4.478306] mt7921e 0000:01:00.0: ASIC revision: 79610010
-    [4.480063] mt7921e: probe of 0000:01:00.0 failed with error -110
-    
-    Fixes: 0a1059d0f060 ("mt76: mt7921: move mt7921_dma_reset in dma.c")
-    Signed-off-by: Quan Zhou <quan.zhou@mediatek.com>
-    Signed-off-by: Deren Wu <deren.wu@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 140efef36a91c1d7fad7f89c375fba8df1e4459f
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Mon Apr 3 12:34:00 2023 +0200
 
-    wifi: mt76: move shared mac definitions in mt76_connac2_mac.h
-    
-    Move some mac shared definitions between mt7996, mt7921 and mt7915 in
-    mt76_connac2_mac.h.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 50cc972dde9647e43e3c1e64a41e0553e92e6a37
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Mon Apr 3 12:33:59 2023 +0200
 
-    wifi: mt76: mt7921: get rid of eeprom.h
-    
-    eeprom.h is mostly empty for mt7921, so get rid of it.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 6a8b899df1562a46a8c55cebc7d35508a24300d3
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Mon Apr 3 12:33:58 2023 +0200
 
-    wifi: mt76: add mt76_connac_gen_ppe_thresh utility routine
-    
-    gen_ppe_thresh routine is shared between mt7615, mt7915, mt7921 and
-    mt7996 so move it in mt76_connac module.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+
+
+
+
+
+
 
 
 
