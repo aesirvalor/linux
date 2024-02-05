@@ -2943,98 +2943,29 @@ Date:   Mon Apr 3 12:33:58 2023 +0200
     Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
     Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit f28c3139a9073a0f3161c4f144440b455124041c
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Mon Apr 3 12:33:57 2023 +0200
 
-    wifi: mt76: get rid of unused sta_ps callbacks
-    
-    sta_ps callback is just an empty stub for most of the drivers,
-    so get rid of them.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 4fc441569c9b18eb87d8cd20f197d9d31a84d453
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Mon Apr 3 12:33:56 2023 +0200
 
-    wifi: mt76: add mt76_connac_irq_enable utility routine
-    
-    Most of connac based drivers (mt7921, mt7615, mt7663) share the same
-    code to enable interrupts. Move it in mt76_connac module.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit ec193b41cc56077e481af4abca2e00e298fcf798
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Mon Apr 3 12:33:55 2023 +0200
+drivers/net/wireless/mediatek/mt76/mac80211.c:1070:26: error: use of undeclared identifier 'RX_ENC_EHT'
+        if (status->encoding == RX_ENC_EHT) {
+                                ^
+drivers/net/wireless/mediatek/mt76/mac80211.c:1071:11: error: no member named 'eht' in 'struct ieee80211_rx_status'
+                status->eht.ru = mstat.eht.ru;
+                ~~~~~~  ^
+drivers/net/wireless/mediatek/mt76/mac80211.c:1072:11: error: no member named 'eht' in 'struct ieee80211_rx_status'
+                status->eht.gi = mstat.eht.gi;
+                ~~~~~~  ^
 
-    wifi: mt76: move irq_tasklet in mt76_dev struct
-    
-    irq_tasklet struct is used by most of the drivers (e.g. mt7915, mt7921,
-    mt7615, mt7663 and mt7996) so move it in common code.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 09d4d6da1b65d09414e7bce61459593f3c80ead1
-Author: Mario Limonciello <mario.limonciello@amd.com>
-Date:   Wed Mar 29 14:57:58 2023 -0500
 
-    wifi: mt76: mt7921e: Set memory space enable in PCI_COMMAND if unset
-    
-    When the BIOS has been configured for Fast Boot, systems with mt7921e
-    have non-functional wifi.  Turning on Fast boot caused both bus master
-    enable and memory space enable bits in PCI_COMMAND not to get configured.
-    
-    The mt7921 driver already sets bus master enable, but explicitly check
-    and set memory access enable as well to fix this problem.
-    
-    Tested-by: Anson Tsao <anson.tsao@amd.com>
-    Signed-off-by: Mario Limonciello <mario.limonciello@amd.com>
-    Acked-by: Sean Wang <sean.wang@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit a5af1481a85679a9812f728ee5cf64ee7edbe669
-Author: Neil Chen <yn.chen@mediatek.com>
-Date:   Tue Mar 7 19:22:49 2023 +0800
 
-    wifi: mt76: mt7921: use driver flags rather than mac80211 flags to mcu
-    
-    FIF_* flags from mac80211 is not ABI. mt7921 should not pass it into mcu
-    directly. Remap FIF_* to driver defined flags as mcu command input.
-    
-    Fixes: c222f77fd421 ("wifi: mt76: mt7921: fix rx filter incorrect by drv/fw inconsistent")
-    Signed-off-by: Neil Chen <yn.chen@mediatek.com>
-    Signed-off-by: Deren Wu <deren.wu@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit a1ec7e6237c58c887e34ce4c02a9ec88ebe1c766
-Author: Lorenzo Bianconi <lorenzo@kernel.org>
-Date:   Mon Mar 6 18:50:29 2023 +0100
 
-    wifi: mt76: mt7921: introduce mt7921_get_mac80211_ops utility routine
-    
-    Since the fw offload capability check is shared between pci,usb and sdio
-    devices, move it in common init code and reduce code duplication.
-    
-    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
 
-commit 021af945997ffaeaa37c9673d71afad7cde6bdef
-Author: Shayne Chen <shayne.chen@mediatek.com>
-Date:   Fri Mar 3 16:35:52 2023 +0800
 
-    wifi: mt76: mt7996: add eht rx rate support
-    
-    Add support to report eht rx rate.
-    Note that extended fields for eht in mt76_rx_status will make the struct
-    size exceed the cb size, so make nss and band share the same u8.
-    
-    Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
-    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+
 
 
 
