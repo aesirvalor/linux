@@ -598,13 +598,6 @@ mt76_dma_rx_fill(struct mt76_dev *dev, struct mt76_queue *q)
 		struct mt76_queue_buf qbuf;
 		void *buf = NULL;
 
-		if ((q->flags & MT_QFLAG_WED) &&
-		    FIELD_GET(MT_QFLAG_WED_TYPE, q->flags) == MT76_WED_Q_RX) {
-			t = mt76_get_rxwi(dev);
-			if (!t)
-				break;
-		}
-
 		buf = page_frag_alloc(&q->rx_page, q->buf_size, GFP_ATOMIC);
 		if (!buf)
 			break;
