@@ -2583,7 +2583,33 @@ Date:   Sat Dec 31 08:44:33 2022 +0100
 
 
 
-
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:863:46: error: use of undeclared identifier 'iftype'; did you mean '_ctype'?
+        mt7996_set_stream_he_txbf_caps(phy, he_cap, iftype);
+                                                    ^~~~~~
+                                                    _ctype
+./include/linux/ctype.h:21:28: note: '_ctype' declared here
+extern const unsigned char _ctype[];
+                           ^
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:868:3: error: call to undeclared function 'mt7996_gen_ppe_thresh'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+                mt7996_gen_ppe_thresh(he_cap->ppe_thres, nss);
+                ^
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:868:44: error: use of undeclared identifier 'nss'
+                mt7996_gen_ppe_thresh(he_cap->ppe_thres, nss);
+                                                         ^
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:894:1: error: function definition is not allowed here
+{
+^
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:921:1: error: function definition is not allowed here
+{
+^
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:936:1: error: function definition is not allowed here
+{
+^
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:984:1: error: function definition is not allowed here
+{
+^
+drivers/net/wireless/mediatek/mt76/mt7996/init.c:994:2: error: expected '}'
+}
 
 
 
