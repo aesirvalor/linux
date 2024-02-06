@@ -1,0 +1,203 @@
+commit a9ca9f9ceff382b58b488248f0c0da9e157f5d06
+Author: Yunsheng Lin <linyunsheng@huawei.com>
+Date:   Fri Aug 4 20:05:24 2023 +0200
+
+    page_pool: split types and declarations from page_pool.h
+    
+    Split types and pure function declarations from page_pool.h
+    and add them in page_page/types.h, so that C sources can
+    include page_pool.h and headers should generally only include
+    page_pool/types.h as suggested by jakub.
+    Rename page_pool.h to page_pool/helpers.h to have both in
+    one place.
+    
+    Signed-off-by: Yunsheng Lin <linyunsheng@huawei.com>
+    Suggested-by: Jakub Kicinski <kuba@kernel.org>
+    Signed-off-by: Alexander Lobakin <aleksander.lobakin@intel.com>
+    Reviewed-by: Alexander Duyck <alexanderduyck@fb.com>
+    Link: https://lore.kernel.org/r/20230804180529.2483231-2-aleksander.lobakin@intel.com
+    [Jakub: change microsoft/mana, fix kdoc paths in Documentation]
+    Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+commit 82e896d992fa631cda1f63239fd47b3ab781ffa6
+Author: Jakub Kicinski <kuba@kernel.org>
+Date:   Wed Aug 2 09:18:21 2023 -0700
+
+    docs: net: page_pool: use kdoc to avoid duplicating the information
+    
+    All struct members of the driver-facing APIs are documented twice,
+    in the code and under Documentation. This is a bit tedious.
+    
+    I also get the feeling that a lot of developers will read the header
+    when coding, rather than the doc. Bring the two a little closer
+    together by using kdoc for structs and functions.
+    
+    Using kdoc also gives us links (mentioning a function or struct
+    in the text gets replaced by a link to its doc).
+    
+    Reviewed-by: Randy Dunlap <rdunlap@infradead.org>
+    Tested-by: Randy Dunlap <rdunlap@infradead.org>
+    Acked-by: Jesper Dangaard Brouer <hawk@kernel.org>
+    Link: https://lore.kernel.org/r/20230802161821.3621985-3-kuba@kernel.org
+    Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+commit 535b9c61bdef6017228c708128b7849a476f8da5
+Author: Jakub Kicinski <kuba@kernel.org>
+Date:   Wed Jul 19 18:04:08 2023 -0700
+
+    net: page_pool: hide page_pool_release_page()
+    
+    There seems to be no user calling page_pool_release_page()
+    for legit reasons, all the users simply haven't been converted
+    to skb-based recycling, yet. Previous changes converted them.
+    Update the docs, and unexport the function.
+    
+    Link: https://lore.kernel.org/r/20230720010409.1967072-4-kuba@kernel.org
+    Reviewed-by: Alexander Lobakin <aleksander.lobakin@intel.com>
+    Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+commit 368d3cb406cdd074d1df2ad9ec06d1bfcb664882
+Author: Yunsheng Lin <linyunsheng@huawei.com>
+Date:   Mon May 22 11:17:14 2023 +0800
+
+    page_pool: fix inconsistency for page_pool_ring_[un]lock()
+    
+    page_pool_ring_[un]lock() use in_softirq() to decide which
+    spin lock variant to use, and when they are called in the
+    context with in_softirq() being false, spin_lock_bh() is
+    called in page_pool_ring_lock() while spin_unlock() is
+    called in page_pool_ring_unlock(), because spin_lock_bh()
+    has disabled the softirq in page_pool_ring_lock(), which
+    causes inconsistency for spin lock pair calling.
+    
+    This patch fixes it by returning in_softirq state from
+    page_pool_producer_lock(), and use it to decide which
+    spin lock variant to use in page_pool_producer_unlock().
+    
+    As pool->ring has both producer and consumer lock, so
+    rename it to page_pool_producer_[un]lock() to reflect
+    the actual usage. Also move them to page_pool.c as they
+    are only used there, and remove the 'inline' as the
+    compiler may have better idea to do inlining or not.
+    
+    Fixes: 7886244736a4 ("net: page_pool: Add bulk support for ptr_ring")
+    Signed-off-by: Yunsheng Lin <linyunsheng@huawei.com>
+    Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+    Acked-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+    Link: https://lore.kernel.org/r/20230522031714.5089-1-linyunsheng@huawei.com
+    Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+commit dd64b232deb8d48812a2ea739d1fedaeaffb59ed
+Author: Jakub Kicinski <kuba@kernel.org>
+Date:   Wed Apr 19 11:20:06 2023 -0700
+
+    page_pool: unlink from napi during destroy
+    
+    Jesper points out that we must prevent recycling into cache
+    after page_pool_destroy() is called, because page_pool_destroy()
+    is not synchronized with recycling (some pages may still be
+    outstanding when destroy() gets called).
+    
+    I assumed this will not happen because NAPI can't be scheduled
+    if its page pool is being destroyed. But I missed the fact that
+    NAPI may get reused. For instance when user changes ring configuration
+    driver may allocate a new page pool, stop NAPI, swap, start NAPI,
+    and then destroy the old pool. The NAPI is running so old page
+    pool will think it can recycle to the cache, but the consumer
+    at that point is the destroy() path, not NAPI.
+    
+    To avoid extra synchronization let the drivers do "unlinking"
+    during the "swap" stage while NAPI is indeed disabled.
+    
+    Fixes: 8c48eea3adf3 ("page_pool: allow caching from safely localized NAPI")
+    Reported-by: Jesper Dangaard Brouer <jbrouer@redhat.com>
+    Link: https://lore.kernel.org/all/e8df2654-6a5b-3c92-489d-2fe5e444135f@redhat.com/
+    Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+    Link: https://lore.kernel.org/r/20230419182006.719923-1-kuba@kernel.org
+    Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+commit 8c48eea3adf3119e0a3fc57bd31f6966f26ee784
+Author: Jakub Kicinski <kuba@kernel.org>
+Date:   Wed Apr 12 21:26:04 2023 -0700
+
+    page_pool: allow caching from safely localized NAPI
+    
+    Recent patches to mlx5 mentioned a regression when moving from
+    driver local page pool to only using the generic page pool code.
+    Page pool has two recycling paths (1) direct one, which runs in
+    safe NAPI context (basically consumer context, so producing
+    can be lockless); and (2) via a ptr_ring, which takes a spin
+    lock because the freeing can happen from any CPU; producer
+    and consumer may run concurrently.
+    
+    Since the page pool code was added, Eric introduced a revised version
+    of deferred skb freeing. TCP skbs are now usually returned to the CPU
+    which allocated them, and freed in softirq context. This places the
+    freeing (producing of pages back to the pool) enticingly close to
+    the allocation (consumer).
+    
+    If we can prove that we're freeing in the same softirq context in which
+    the consumer NAPI will run - lockless use of the cache is perfectly fine,
+    no need for the lock.
+    
+    Let drivers link the page pool to a NAPI instance. If the NAPI instance
+    is scheduled on the same CPU on which we're freeing - place the pages
+    in the direct cache.
+    
+    With that and patched bnxt (XDP enabled to engage the page pool, sigh,
+    bnxt really needs page pool work :() I see a 2.6% perf boost with
+    a TCP stream test (app on a different physical core than softirq).
+    
+    The CPU use of relevant functions decreases as expected:
+    
+      page_pool_refill_alloc_cache   1.17% -> 0%
+      _raw_spin_lock                 2.41% -> 0.98%
+    
+    Only consider lockless path to be safe when NAPI is scheduled
+    - in practice this should cover majority if not all of steady state
+    workloads. It's usually the NAPI kicking in that causes the skb flush.
+    
+    The main case we'll miss out on is when application runs on the same
+    CPU as NAPI. In that case we don't use the deferred skb free path.
+    
+    Reviewed-by: Tariq Toukan <tariqt@nvidia.com>
+    Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+    Tested-by: Dragos Tatulea <dtatulea@nvidia.com>
+    Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+commit 4d4266e3fd321fadb628ce02de641b129522c39c
+Author: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Date:   Sat Feb 18 00:21:30 2023 +0200
+
+    page_pool: add a comment explaining the fragment counter usage
+    
+    When reading the page_pool code the first impression is that keeping
+    two separate counters, one being the page refcnt and the other being
+    fragment pp_frag_count, is counter-intuitive.
+    
+    However without that fragment counter we don't know when to reliably
+    destroy or sync the outstanding DMA mappings.  So let's add a comment
+    explaining this part.
+    
+    Reviewed-by: Alexander Duyck <alexanderduyck@fb.com>
+    Signed-off-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+    Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+    Link: https://lore.kernel.org/r/20230217222130.85205-1-ilias.apalodimas@linaro.org
+    Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+commit 542bcea4be866b14b3a5c8e90773329066656c43
+Author: Qingfang DENG <qingfang.deng@siflower.com.cn>
+Date:   Fri Feb 3 09:16:11 2023 +0800
+
+    net: page_pool: use in_softirq() instead
+    
+    We use BH context only for synchronization, so we don't care if it's
+    actually serving softirq or not.
+    
+    As a side node, in case of threaded NAPI, in_serving_softirq() will
+    return false because it's in process context with BH off, making
+    page_pool_recycle_in_cache() unreachable.
+    
+    Signed-off-by: Qingfang DENG <qingfang.deng@siflower.com.cn>
+    Tested-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: David S. Miller <davem@davemloft.net>

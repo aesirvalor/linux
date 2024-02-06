@@ -1,0 +1,353 @@
+commit 23587d856aa956183a083a0c16cc6e801aae10e7
+Author: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date:   Mon Nov 13 15:06:19 2023 +0800
+
+    wifi: mt76: mt7996: add PCI IDs for mt7992
+    
+    [ Upstream commit 3d3f117a259a65353bf2714a18e25731b3ca5770 ]
+    
+    Add PCI device IDs to enable mt7992 chipsets support.
+    
+    Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+    Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit b6bbbba3b85c51f99830c29fd062a7c234c97f92
+Author: MeiChia Chiu <meichia.chiu@mediatek.com>
+Date:   Thu Nov 2 18:03:02 2023 +0800
+
+    wifi: mt76: connac: fix EHT phy mode check
+    
+    [ Upstream commit 2c2f50bf6407e1fd43a1a257916aeaa5ffdacd6c ]
+    
+    Add a BSS eht_support check before returning EHT phy mode. Without this
+    patch, there might be an inconsistency where the softmac layer thinks
+    the BSS is in HE mode, while the FW thinks it is in EHT mode.
+    
+    Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
+    Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 2cabcffe017bb82f0f56d38821262f25f7a48845
+Author: Christian Marangi <ansuelsmth@gmail.com>
+Date:   Wed Oct 18 15:09:37 2023 +0200
+
+    wifi: mt76: fix broken precal loading from MTD for mt7915
+    
+    commit e874a79250b39447765ac13272b67ac36ccf2a75 upstream.
+    
+    Commit 495184ac91bb ("mt76: mt7915: add support for applying
+    pre-calibration data") was fundamentally broken and never worked.
+    
+    The idea (before NVMEM support) was to expand the MTD function and pass
+    an additional offset. For normal EEPROM load the offset would always be
+    0. For the purpose of precal loading, an offset was passed that was
+    internally the size of EEPROM, since precal data is right after the
+    EEPROM.
+    
+    Problem is that the offset value passed is never handled and is actually
+    overwrite by
+    
+            offset = be32_to_cpup(list);
+            ret = mtd_read(mtd, offset, len, &retlen, eep);
+    
+    resulting in the passed offset value always ingnored. (and even passing
+    garbage data as precal as the start of the EEPROM is getting read)
+    
+    Fix this by adding to the current offset value, the offset from DT to
+    correctly read the piece of data at the requested location.
+    
+    Cc: stable@vger.kernel.org
+    Fixes: 495184ac91bb ("mt76: mt7915: add support for applying pre-calibration data")
+    Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+commit 05534fc3de5461dec973fcdfbd0002f9ce346056
+Author: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+Date:   Wed Nov 22 11:06:46 2023 +0800
+
+    wifi: mt76: mt7921: fix wrong 6Ghz power type
+    
+    [ Upstream commit 10f2903147ed04784522ab841c20bb469bdd8681 ]
+    
+    To avoid using incorrect 6g power settings after disconnection,
+    it should to update back to the default state when disconnected.
+    
+    Fixes: 51ba0e3a15eb ("wifi: mt76: mt7921: add 6GHz power type support for clc")
+    Signed-off-by: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 33af3fb9fc896d4aa9166f8a8b397d0ac8e08ef3
+Author: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+Date:   Wed Nov 22 11:06:45 2023 +0800
+
+    wifi: mt76: mt7921: fix CLC command timeout when suspend/resume
+    
+    [ Upstream commit d0a2bc5fe712217d2c73822ae75fd4e69a15cb2c ]
+    
+    When enter suspend/resume while in a connected state, the upper layer
+    will trigger disconnection before entering suspend, and at the same time,
+    it will trigger regd_notifier() and update CLC, causing the CLC event to
+    not be received due to suspend, resulting in a command timeout.
+    
+    Therefore, the update of CLC is postponed until resume, to ensure data
+    consistency and avoid the occurrence of command timeout.
+    
+    Fixes: 4fc8df50fd41 ("wifi: mt76: mt7921: get regulatory information from the clc event")
+    Signed-off-by: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 5c8cac512844ad593d31258e215908014381bee2
+Author: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+Date:   Wed Nov 22 11:06:44 2023 +0800
+
+    wifi: mt76: mt7921: fix country count limitation for CLC
+    
+    [ Upstream commit fa6ad88e023ddfa6c5dcdb466d159e89f451e305 ]
+    
+    Due to the increase in the number of power tables for 6Ghz on CLC,
+    the variable nr_country is no longer sufficient to represent the
+    total quantity. Therefore, we have switched to calculating the
+    length of clc buf to obtain the correct power table. Additionally,
+    the version number has been incremented to 1.
+    
+    Fixes: 23bdc5d8cadf ("wifi: mt76: mt7921: introduce Country Location Control support")
+    Signed-off-by: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit ee86f6d9740a5cdedf2f8e246b2f75b4b0480978
+Author: Wang Zhao <wang.zhao@mediatek.com>
+Date:   Fri Nov 17 20:54:49 2023 +0800
+
+    wifi: mt76: mt7921s: fix workqueue problem causes STA association fail
+    
+    [ Upstream commit 92184eae1d5ad804884e2c6e289d885b9e3194d1 ]
+    
+    The ieee80211_queue_work function queues work into the mac80211
+    local->workqueue, which is widely used for mac80211 internal
+    work processes. In the mt76 driver, both the mt76-sido-status and
+    mt76-sdio-net threads enqueue workers to the workqueue with this
+    function. However, in some cases, when two workers are enqueued
+    to the workqueue almost simultaneously, the second worker may not
+    be scheduled immediately and may get stuck for a while.
+    This can cause timing issues. To avoid these timing
+    conflicts caused by worker scheduling, replace the worker
+    with an independent thread.
+    
+    Fixes: 48fab5bbef40 ("mt76: mt7921: introduce mt7921s support")
+    Signed-off-by: Wang Zhao <wang.zhao@mediatek.com>
+    Signed-off-by: Deren Wu <deren.wu@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 573af2747a94d99f4a529b6f34938aa4aec5aaa0
+Author: Arnd Bergmann <arnd@arndb.de>
+Date:   Fri Nov 10 15:29:30 2023 +0100
+
+    wifi: mt76: mt7996: fix mt7996_mcu_all_sta_info_event struct packing
+    
+    [ Upstream commit 2ee1c40daeb9a33e25c460bf87feca58e91af879 ]
+    
+    The internal struct and union inside mt7996_mcu_all_sta_info_event is
+    marked as being aligned, which conflicts with it being unaligned
+    within that structure:
+    
+    drivers/net/wireless/mediatek/mt76/mt7996/mcu.h:165:2: error: field  within 'struct mt7996_mcu_all_sta_info_event' is less aligned than 'union mt7996_mcu_all_sta_info_event::(anonymous at ../drivers/net/wireless/mediatek/mt76/mt7996/mcu.h:165:2)' and is usually due to 'struct mt7996_mcu_all_sta_info_event' being packed, which can lead to unaligned accesses [-Werror,-Wunaligned-access]
+    
+    Mark all three as being packed as well to ensure byte packing for
+    the entire thing.
+    
+    Fixes: adde3eed4a75 ("wifi: mt76: mt7996: Add mcu commands for getting sta tx statistic")
+    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 33fd9701237c5cd047b0cfa4531f15c0ab80ff8d
+Author: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date:   Mon Nov 6 22:39:31 2023 +0000
+
+    wifi: mt76: mt7915: also MT7981 is 3T3R but nss2 on 5 GHz band
+    
+    [ Upstream commit ff434cc129d6907e6dbc89dd0ebc59fd3646d4c2 ]
+    
+    Just like MT7916 also MT7981 can handle 3T3R DBDC frontend and should
+    hence be included in the corresponding conditional expression in the
+    driver. Add it.
+    
+    Fixes: 6bad146d162e ("wifi: mt76: mt7915: add support for MT7981")
+    Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+    Signed-off-by: Daniel Golle <daniel@makrotopia.org>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 90f1b2ff2b7b1e78c5a87ca010a66291a1652321
+Author: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date:   Mon Nov 6 22:38:53 2023 +0000
+
+    wifi: mt76: mt7915: fix EEPROM offset of TSSI flag on MT7981
+    
+    [ Upstream commit 3531c72aedb95261f4d78c47efa4b5ba7cdcddd9 ]
+    
+    The offset of the TSSI flag on the EEPROM of MT7981 devices was wrong.
+    Set the correct offset instead.
+    
+    Fixes: 6bad146d162e ("wifi: mt76: mt7915: add support for MT7981")
+    Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+    Signed-off-by: Daniel Golle <daniel@makrotopia.org>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 1c69fade102d2bcb37da4892eacc4b06bf7237d6
+Author: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+Date:   Thu Nov 2 18:02:59 2023 +0800
+
+    wifi: mt76: mt7996: fix alignment of sta info event
+    
+    [ Upstream commit d58a9778f7ca0634622d2fc2e9f76163467bdf5b ]
+    
+    Fix the alignment of struct mt7996_mcu_all_sta_info_event.
+    
+    Fixes: adde3eed4a75 ("wifi: mt76: mt7996: Add mcu commands for getting sta tx statistic")
+    Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
+    Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit a50023ced3b1ca1f424841df662a67678d2c104d
+Author: MeiChia Chiu <meichia.chiu@mediatek.com>
+Date:   Mon Oct 23 23:38:54 2023 +0800
+
+    wifi: mt76: mt7996: fix rate usage of inband discovery frames
+    
+    [ Upstream commit 1e3f387736c744e73b5398a147b90412f82f54da ]
+    
+    For UBPR and FILS frames, the BSS_CHANGED_BEACON flag will also be set,
+    which causes those frames to use the beacon rate in TX descriptors.
+    Adjust the statement to fix this issue.
+    
+    Fixes: 98686cd21624 ("wifi: mt76: mt7996: add driver for MediaTek Wi-Fi 7 (802.11be) devices")
+    Signed-off-by: MeiChia Chiu <meichia.chiu@mediatek.com>
+    Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 3ecec630ef58df2b6aa168b1089b395671cbf3d7
+Author: Sujuan Chen <sujuan.chen@mediatek.com>
+Date:   Mon Oct 23 23:38:49 2023 +0800
+
+    wifi: mt76: mt7996: fix the size of struct bss_rate_tlv
+    
+    [ Upstream commit 4aa9992674e70074fce450f65ebc95c2ba2b79ae ]
+    
+    Align the format of struct bss_rate_tlv to the firmware.
+    
+    Fixes: 98686cd21624 ("wifi: mt76: mt7996: add driver for MediaTek Wi-Fi 7 (802.11be) devices")
+    Signed-off-by: Sujuan Chen <sujuan.chen@mediatek.com>
+    Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 9bc3550f86a13dd03f8503ffccaec12d98c69e16
+Author: Lorenzo Bianconi <lorenzo@kernel.org>
+Date:   Fri Oct 20 12:45:19 2023 +0200
+
+    wifi: mt76: mt7915: fallback to non-wed mode if platform_get_resource fails in mt7915_mmio_wed_init()
+    
+    [ Upstream commit 5f9d5d4fc561e7bd3a18742f1fdb96cab98f1870 ]
+    
+    mt76 assumes mt7915_mmio_wed_init can fail just after wed driver has
+    been attached running mtk_wed_device_attach().
+    Fall back to non-wed mode if platform_get_resource fails in
+    mt7915_mmio_wed_init routines.
+    
+    Fixes: eebb70976be5 ("wifi: mt76: mt7915: enable wed for mt7986-wmac chipset")
+    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit 72246f7178038ca1b0030b4c1426a93e0c561375
+Author: Christian Marangi <ansuelsmth@gmail.com>
+Date:   Wed Oct 18 15:09:38 2023 +0200
+
+    wifi: mt76: fix typo in mt76_get_of_eeprom_from_nvmem function
+    
+    [ Upstream commit c33e5f4cbb9f961e66473a9ace077c4d1f29a5bb ]
+    
+    Fix typo in mt76_get_of_eeprom_from_nvmem where eeprom was misspelled as
+    epprom.
+    
+    Fixes: 5bef3a406c6e ("wifi: mt76: add support for providing eeprom in nvmem cells")
+    Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit dd58bb4a43708057eaa981036c9c05650e24598b
+Author: Yi-Chia Hsieh <yi-chia.hsieh@mediatek.com>
+Date:   Thu Oct 12 15:00:26 2023 -0700
+
+    wifi: mt76: mt7996: fix uninitialized variable in parsing txfree
+    
+    [ Upstream commit 706e83b33103fc5dc945765ddbf6a3e879d21275 ]
+    
+    Fix the uninitialized variable warning in mt7996_mac_tx_free.
+    
+    Fixes: 2461599f835e ("wifi: mt76: mt7996: get tx_retries and tx_failed from txfree")
+    Signed-off-by: Yi-Chia Hsieh <yi-chia.hsieh@mediatek.com>
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Signed-off-by: Sasha Levin <sashal@kernel.org>
+
+commit cd607f2cbbbec90682b2f6d6b85e1525d0f43b19
+Author: Felix Fietkau <nbd@nbd.name>
+Date:   Fri Dec 8 08:50:04 2023 +0100
+
+    wifi: mt76: fix crash with WED rx support enabled
+    
+    If WED rx is enabled, rx buffers are added to a buffer pool that can be
+    filled from multiple page pools. Because buffers freed from rx poll are
+    not guaranteed to belong to the processed queue's page pool, lockless
+    caching must not be used in this case.
+    
+    Cc: stable@vger.kernel.org
+    Fixes: 2f5c3c77fc9b ("wifi: mt76: switch to page_pool allocator")
+    Signed-off-by: Felix Fietkau <nbd@nbd.name>
+    Acked-by: Lorenzo Bianconi <lorenzo@kernel.org>
+    Signed-off-by: Kalle Valo <kvalo@kernel.org>
+    Link: https://lore.kernel.org/r/20231208075004.69843-1-nbd@nbd.name
+
+commit 695bfba7ca781dd41b5225148cc8cebd74c553c2
+Author: Lorenzo Bianconi <lorenzo@kernel.org>
+Date:   Mon Nov 13 11:06:33 2023 +0100
+
+    wifi: mt76: mt7925: fix typo in mt7925_init_he_caps
+    
+    Use iftype for interface type switch in mt7925_init_he_caps routine. This found
+    during code review but later Coverity reported this with id 1549845.
+    
+    Fixes: c948b5da6bbe ("wifi: mt76: mt7925: add Mediatek Wi-Fi7 driver for mt7925 chips")
+    Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+    Signed-off-by: Kalle Valo <kvalo@kernel.org>
+    Link: https://lore.kernel.org/r/7de6e939dc75ee08f05bf1ee73253aa7eeccf28e.1699869649.git.lorenzo@kernel.org
+
+commit 7a934b5cc3f452df6f9a4903450fc103dee98ee8
+Author: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+Date:   Mon Oct 30 15:17:34 2023 +0800
+
+    wifi: mt76: mt7921: fix 6GHz disabled by the missing default CLC config
+    
+    No matter CLC is enabled or disabled, the driver should initialize
+    the default value 0xff for channel configuration of CLC. Otherwise,
+    the zero value would disable channels.
+    
+    Reported-and-tested-by: Ben Greear <greearb@candelatech.com>
+    Closes: https://lore.kernel.org/all/2fb78387-d226-3193-8ca7-90040561b9ad@candelatech.com/
+    Fixes: 09382d8f8641 ("wifi: mt76: mt7921: update the channel usage when the regd domain changed")
+    Signed-off-by: Ming Yen Hsieh <mingyen.hsieh@mediatek.com>
+    Signed-off-by: Deren Wu <deren.wu@mediatek.com>
+    Signed-off-by: Kalle Valo <kvalo@kernel.org>
+    Link: https://lore.kernel.org/r/5a976ddf1f636b5cb809373501d3cfdc6d8de3e4.1698648737.git.deren.wu@mediatek.com
