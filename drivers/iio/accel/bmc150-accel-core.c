@@ -10,7 +10,6 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
-#include <linux/dmi.h>
 #include <linux/of_irq.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
@@ -2432,8 +2431,6 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
 	struct iio_dev *indio_dev;
 	int ret;
 
-	if (dmi_match(DMI_BOARD_NAME, "RC71L") || (dmi_match(DMI_BOARD_NAME, "AB05-AMD") && dmi_match(DMI_PRODUCT_NAME, "AIR Plus")))
-		return -ENODEV; // Abort loading bmc150 for ASUS ROG ALLY, Ayaneo Air Plus
 	indio_dev = devm_iio_device_alloc(dev, sizeof(*data));
 	if (!indio_dev)
 		return -ENOMEM;
