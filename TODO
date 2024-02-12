@@ -1,7 +1,1 @@
-disable vmware stuff
-disable xen stuff
-compare config with linux package
 tcp bbrv3
-disable intel grp
-disable agp gpu
-disable nvidia gpu
