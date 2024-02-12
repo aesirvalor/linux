@@ -370,8 +370,7 @@ struct tcp_sock {
 		tlp_retrans:1,	/* TLP is a retransmission */
 		tcp_usec_ts:1, /* TSval values in usec */
 		fast_ack_mode:2, /* which fast ack mode ? */
-		tlp_orig_data_app_limited:1, /* app-limited before TLP rtx? */
-		unused:1;
+		unused:2;
 	u8	thin_lto    : 1,/* Use linear timeouts for thin streams */
 		recvmsg_inq : 1,/* Indicate # of bytes in queue upon recvmsg */
 		fastopen_connect:1, /* FASTOPEN_CONNECT sockopt */
