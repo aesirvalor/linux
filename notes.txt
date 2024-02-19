@@ -10,7 +10,34 @@ drivers/cpufreq/amd-pstate.c:1334:11: error: incompatible integer to pointer con
         dev_root = bus_get_dev_root(&cpu_subsys);
                  ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
+drivers/base/bus.c:894:14: error: conflicting types for 'bus_get_kset'
+struct kset *bus_get_kset(struct bus_type *bus)
+             ^
+./include/linux/device/bus.h:289:21: note: previous declaration is here
+extern struct kset *bus_get_kset(const struct bus_type *bus);
+                    ^
+drivers/base/bus.c:1183:30: error: call to undeclared function 'bus_to_subsys'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        struct subsys_private *sp = bus_to_subsys(bus);
+                                    ^
+drivers/base/bus.c:1183:25: error: incompatible integer to pointer conversion initializing 'struct subsys_private *' with an expression of type 'int' [-Wint-conversion]
+        struct subsys_private *sp = bus_to_subsys(bus);
+                               ^    ~~~~~~~~~~~~~~~~~~
+drivers/base/bus.c:1191:2: error: call to undeclared function 'subsys_put'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        subsys_put(sp);
+        ^
+drivers/base/bus.c:1191:2: note: did you mean 'sysfs_put'?
+./include/linux/sysfs.h:655:20: note: 'sysfs_put' declared here
+static inline void sysfs_put(struct kernfs_node *kn)
+                   ^
+drivers/base/bus.c:1209:30: error: call to undeclared function 'bus_to_subsys'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        struct subsys_private *sp = bus_to_subsys(bus);
+                                    ^
+drivers/base/bus.c:1209:25: error: incompatible integer to pointer conversion initializing 'struct subsys_private *' with an expression of type 'int' [-Wint-conversion]
+        struct subsys_private *sp = bus_to_subsys(bus);
+                               ^    ~~~~~~~~~~~~~~~~~~
+drivers/base/bus.c:1214:3: error: call to undeclared function 'subsys_put'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+                subsys_put(sp);
+                ^
 
 
 commit 23587d856aa956183a083a0c16cc6e801aae10e7
