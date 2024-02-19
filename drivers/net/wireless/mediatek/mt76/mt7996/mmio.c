@@ -12,16 +12,14 @@
 #include "../trace.h"
 
 static const struct __base mt7996_reg_base[] = {
-	[WF_AGG_BASE]		= { { 0x820e2000, 0x820f2000, 0x830e2000 } },
-	[WF_ARB_BASE]		= { { 0x820e3000, 0x820f3000, 0x830e3000 } },
-	[WF_TMAC_BASE]		= { { 0x820e4000, 0x820f4000, 0x830e4000 } },
-	[WF_RMAC_BASE]		= { { 0x820e5000, 0x820f5000, 0x830e5000 } },
-	[WF_DMA_BASE]		= { { 0x820e7000, 0x820f7000, 0x830e7000 } },
-	[WF_WTBLOFF_BASE]	= { { 0x820e9000, 0x820f9000, 0x830e9000 } },
-	[WF_ETBF_BASE]		= { { 0x820ea000, 0x820fa000, 0x830ea000 } },
-	[WF_LPON_BASE]		= { { 0x820eb000, 0x820fb000, 0x830eb000 } },
-	[WF_MIB_BASE]		= { { 0x820ed000, 0x820fd000, 0x830ed000 } },
-	[WF_RATE_BASE]		= { { 0x820ee000, 0x820fe000, 0x830ee000 } },
+	[WF_AGG_BASE]	= { { 0x820e2000, 0x820f2000, 0x830e2000 } },
+	[WF_MIB_BASE]	= { { 0x820ed000, 0x820fd000, 0x830ed000 } },
+	[WF_TMAC_BASE]	= { { 0x820e4000, 0x820f4000, 0x830e4000 } },
+	[WF_RMAC_BASE]	= { { 0x820e5000, 0x820f5000, 0x830e5000 } },
+	[WF_ARB_BASE]	= { { 0x820e3000, 0x820f3000, 0x830e3000 } },
+	[WF_LPON_BASE]	= { { 0x820eb000, 0x820fb000, 0x830eb000 } },
+	[WF_ETBF_BASE]	= { { 0x820ea000, 0x820fa000, 0x830ea000 } },
+	[WF_DMA_BASE]	= { { 0x820e7000, 0x820f7000, 0x830e7000 } },
 };
 
 static const struct __map mt7996_reg_map[] = {
@@ -150,7 +148,7 @@ static u32 __mt7996_reg_addr(struct mt7996_dev *dev, u32 addr)
 
 	if (dev_is_pci(dev->mt76.dev) &&
 	    ((addr >= MT_CBTOP1_PHY_START && addr <= MT_CBTOP1_PHY_END) ||
-	    addr >= MT_CBTOP2_PHY_START))
+	     (addr >= MT_CBTOP2_PHY_START && addr <= MT_CBTOP2_PHY_END)))
 		return mt7996_reg_map_l1(dev, addr);
 
 	/* CONN_INFRA: covert to phyiscal addr and use layer 1 remap */
@@ -160,6 +158,14 @@ static u32 __mt7996_reg_addr(struct mt7996_dev *dev, u32 addr)
 	}
 
 	return mt7996_reg_map_l2(dev, addr);
+}
+
+void mt7996_memcpy_fromio(struct mt7996_dev *dev, void *buf, u32 offset,
+			  size_t len)
+{
+	u32 addr = __mt7996_reg_addr(dev, offset);
+
+	memcpy_fromio(buf, dev->mt76.mmio.regs + addr, len);
 }
 
 static u32 mt7996_rr(struct mt76_dev *mdev, u32 offset)
@@ -251,7 +257,7 @@ static void mt7996_rx_poll_complete(struct mt76_dev *mdev,
 /* TODO: support 2/4/6/8 MSI-X vectors */
 static void mt7996_irq_tasklet(struct tasklet_struct *t)
 {
-	struct mt7996_dev *dev = from_tasklet(dev, t, irq_tasklet);
+	struct mt7996_dev *dev = from_tasklet(dev, t, mt76.irq_tasklet);
 	u32 i, intr, mask, intr1;
 
 	mt76_wr(dev, MT_INT_MASK_CSR, 0);
@@ -308,7 +314,7 @@ irqreturn_t mt7996_irq_handler(int irq, void *dev_instance)
 	if (!test_bit(MT76_STATE_INITIALIZED, &dev->mphy.state))
 		return IRQ_NONE;
 
-	tasklet_schedule(&dev->irq_tasklet);
+	tasklet_schedule(&dev->mt76.irq_tasklet);
 
 	return IRQ_HANDLED;
 }
@@ -318,7 +324,7 @@ struct mt7996_dev *mt7996_mmio_probe(struct device *pdev,
 {
 	static const struct mt76_driver_ops drv_ops = {
 		/* txwi_size = txd size + txp size */
-		.txwi_size = MT_TXD_SIZE + sizeof(struct mt76_connac_fw_txp),
+		.txwi_size = MT_TXD_SIZE + sizeof(struct mt7996_txp),
 		.drv_flags = MT_DRV_TXWI_NO_FREE |
 			     MT_DRV_HW_MGMT_TXQ,
 		.survey_flags = SURVEY_INFO_TIME_TX |
@@ -326,11 +332,10 @@ struct mt7996_dev *mt7996_mmio_probe(struct device *pdev,
 				SURVEY_INFO_TIME_BSS_RX,
 		.token_size = MT7996_TOKEN_SIZE,
 		.tx_prepare_skb = mt7996_tx_prepare_skb,
-		.tx_complete_skb = mt76_connac_tx_complete_skb,
+		.tx_complete_skb = mt7996_tx_complete_skb,
 		.rx_skb = mt7996_queue_rx_skb,
 		.rx_check = mt7996_rx_check,
 		.rx_poll_complete = mt7996_rx_poll_complete,
-		.sta_ps = mt7996_sta_ps,
 		.sta_add = mt7996_mac_sta_add,
 		.sta_remove = mt7996_mac_sta_remove,
 		.update_survey = mt7996_update_channel,
@@ -349,7 +354,7 @@ struct mt7996_dev *mt7996_mmio_probe(struct device *pdev,
 	if (ret)
 		goto error;
 
-	tasklet_setup(&dev->irq_tasklet, mt7996_irq_tasklet);
+	tasklet_setup(&mdev->irq_tasklet, mt7996_irq_tasklet);
 
 	mt76_wr(dev, MT_INT_MASK_CSR, 0);
 

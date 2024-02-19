@@ -25,15 +25,13 @@ struct mt7996_reg_desc {
 
 enum base_rev {
 	WF_AGG_BASE,
-	WF_ARB_BASE,
+	WF_MIB_BASE,
 	WF_TMAC_BASE,
 	WF_RMAC_BASE,
-	WF_DMA_BASE,
-	WF_WTBLOFF_BASE,
-	WF_ETBF_BASE,
+	WF_ARB_BASE,
 	WF_LPON_BASE,
-	WF_MIB_BASE,
-	WF_RATE_BASE,
+	WF_ETBF_BASE,
+	WF_DMA_BASE,
 	__MT_REG_BASE_MAX,
 };
 
@@ -98,14 +96,6 @@ enum base_rev {
 
 #define MT_DMA_TCRF1(_band)			MT_WF_DMA(_band, 0x054)
 #define MT_DMA_TCRF1_QIDX			GENMASK(15, 13)
-
-/* WTBLOFF TOP: band 0(0x820e9000), band 1(0x820f9000), band 2(0x830e9000) */
-#define MT_WTBLOFF_BASE(_band)			__BASE(WF_WTBLOFF_BASE, (_band))
-#define MT_WTBLOFF(_band, ofs)			(MT_WTBLOFF_BASE(_band) + (ofs))
-
-#define MT_WTBLOFF_RSCR(_band)			MT_WTBLOFF(_band, 0x008)
-#define MT_WTBLOFF_RSCR_RCPI_MODE		GENMASK(31, 30)
-#define MT_WTBLOFF_RSCR_RCPI_PARAM		GENMASK(25, 24)
 
 /* ETBF: band 0(0x820ea000), band 1(0x820fa000), band 2(0x830ea000) */
 #define MT_WF_ETBF_BASE(_band)			__BASE(WF_ETBF_BASE, (_band))
@@ -236,6 +226,13 @@ enum base_rev {
 						 FIELD_PREP(MT_WTBL_LMAC_ID, _id) | \
 						 FIELD_PREP(MT_WTBL_LMAC_DW, _dw))
 
+/* AGG: band 0(0x820e2000), band 1(0x820f2000), band 2(0x830e2000) */
+#define MT_WF_AGG_BASE(_band)			__BASE(WF_AGG_BASE, (_band))
+#define MT_WF_AGG(_band, ofs)			(MT_WF_AGG_BASE(_band) + (ofs))
+
+#define MT_AGG_ACR0(_band)			MT_WF_AGG(_band, 0x054)
+#define MT_AGG_ACR_CFEND_RATE			GENMASK(13, 0)
+
 /* ARB: band 0(0x820e3000), band 1(0x820f3000), band 2(0x830e3000) */
 #define MT_WF_ARB_BASE(_band)			__BASE(WF_ARB_BASE, (_band))
 #define MT_WF_ARB(_band, ofs)			(MT_WF_ARB_BASE(_band) + (ofs))
@@ -293,13 +290,6 @@ enum base_rev {
 
 #define MT_WF_RMAC_RSVD0(_band)			MT_WF_RMAC(_band, 0x03e0)
 #define MT_WF_RMAC_RSVD0_EIFS_CLR		BIT(21)
-
-/* RATE: band 0(0x820ee000), band 1(0x820fe000), band 2(0x830ee000) */
-#define MT_WF_RATE_BASE(_band)			__BASE(WF_RATE_BASE, (_band))
-#define MT_WF_RATE(_band, ofs)			(MT_WF_RATE_BASE(_band) + (ofs))
-
-#define MT_RATE_HRCR0(_band)			MT_WF_RATE(_band, 0x050)
-#define MT_RATE_HRCR0_CFEND_RATE		GENMASK(14, 0)
 
 /* WFDMA0 */
 #define MT_WFDMA0_BASE				0xd4000
@@ -464,12 +454,32 @@ enum base_rev {
 #define MT_CBTOP1_PHY_START			0x70000000
 #define MT_CBTOP1_PHY_END			0x77ffffff
 #define MT_CBTOP2_PHY_START			0xf0000000
+#define MT_CBTOP2_PHY_END			0xffffffff
 #define MT_INFRA_MCU_START			0x7c000000
 #define MT_INFRA_MCU_END			0x7c3fffff
 
 /* FW MODE SYNC */
-#define MT_SWDEF_MODE				0x9143c
+#define MT_FW_ASSERT_CNT			0x02208274
+#define MT_FW_DUMP_STATE			0x02209e90
+
+#define MT_SWDEF_BASE				0x00401400
+
+#define MT_SWDEF(ofs)				(MT_SWDEF_BASE + (ofs))
+#define MT_SWDEF_MODE				MT_SWDEF(0x3c)
 #define MT_SWDEF_NORMAL_MODE			0
+
+#define MT_SWDEF_SER_STATS			MT_SWDEF(0x040)
+#define MT_SWDEF_PLE_STATS			MT_SWDEF(0x044)
+#define MT_SWDEF_PLE1_STATS			MT_SWDEF(0x048)
+#define MT_SWDEF_PLE_AMSDU_STATS		MT_SWDEF(0x04c)
+#define MT_SWDEF_PSE_STATS			MT_SWDEF(0x050)
+#define MT_SWDEF_PSE1_STATS			MT_SWDEF(0x054)
+#define MT_SWDEF_LAMC_WISR6_BN0_STATS		MT_SWDEF(0x058)
+#define MT_SWDEF_LAMC_WISR6_BN1_STATS		MT_SWDEF(0x05c)
+#define MT_SWDEF_LAMC_WISR6_BN2_STATS		MT_SWDEF(0x060)
+#define MT_SWDEF_LAMC_WISR7_BN0_STATS		MT_SWDEF(0x064)
+#define MT_SWDEF_LAMC_WISR7_BN1_STATS		MT_SWDEF(0x068)
+#define MT_SWDEF_LAMC_WISR7_BN2_STATS		MT_SWDEF(0x06c)
 
 /* LED */
 #define MT_LED_TOP_BASE				0x18013000
@@ -485,6 +495,13 @@ enum base_rev {
 #define MT_LED_TX_BLINK_OFF_MASK		GENMASK(15, 8)
 
 #define MT_LED_EN(_n)				MT_LED_PHYS(0x40 + ((_n) * 4))
+
+/* CONN DBG */
+#define MT_CONN_DBG_CTL_BASE			0x18023000
+#define MT_CONN_DBG_CTL(ofs)			(MT_CONN_DBG_CTL_BASE + (ofs))
+#define MT_CONN_DBG_CTL_OUT_SEL			MT_CONN_DBG_CTL(0x604)
+#define MT_CONN_DBG_CTL_PC_LOG_SEL		MT_CONN_DBG_CTL(0x60c)
+#define MT_CONN_DBG_CTL_PC_LOG			MT_CONN_DBG_CTL(0x610)
 
 #define MT_LED_GPIO_MUX2			0x70005058 /* GPIO 18 */
 #define MT_LED_GPIO_MUX3			0x7000505C /* GPIO 26 */
@@ -538,5 +555,13 @@ enum base_rev {
 #define MT_WF_PHYRX_CSD_BAND_RXTD12(_band)		MT_WF_PHYRX_BAND(_band, 0x8230)
 #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR_ONLY	BIT(18)
 #define MT_WF_PHYRX_CSD_BAND_RXTD12_IRPI_SW_CLR		BIT(29)
+
+/* CONN MCU EXCP CON */
+#define MT_MCU_WM_EXCP_BASE			0x89050000
+#define MT_MCU_WM_EXCP(ofs)			(MT_MCU_WM_EXCP_BASE + (ofs))
+#define MT_MCU_WM_EXCP_PC_CTRL			MT_MCU_WM_EXCP(0x100)
+#define MT_MCU_WM_EXCP_PC_LOG			MT_MCU_WM_EXCP(0x104)
+#define MT_MCU_WM_EXCP_LR_CTRL			MT_MCU_WM_EXCP(0x200)
+#define MT_MCU_WM_EXCP_LR_LOG			MT_MCU_WM_EXCP(0x204)
 
 #endif
