@@ -3,6 +3,58 @@ ffa5096a7c338641f70fb06d4778e8cf400181a8 this has many merge conflicts!
 
 
 
+
+
+
+
+
+
+drivers/base/bus.c:75:8: error: call to undeclared function 'container_of_const'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+                sp = container_of_const(kset, struct subsys_private, subsys);
+                     ^
+drivers/base/bus.c:75:8: note: did you mean 'container_dev_init'?
+drivers/base/base.h:121:13: note: 'container_dev_init' declared here
+extern void container_dev_init(void);
+            ^
+drivers/base/bus.c:75:33: error: expected expression
+                sp = container_of_const(kset, struct subsys_private, subsys);
+                                              ^
+drivers/base/bus.c:75:56: error: use of undeclared identifier 'subsys'
+                sp = container_of_const(kset, struct subsys_private, subsys);
+                                                                     ^
+drivers/base/bus.c:81:7: error: call to undeclared function 'subsys_get'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        sp = subsys_get(sp);
+             ^
+drivers/base/bus.c:81:7: note: did you mean 'sysfs_get'?
+./include/linux/sysfs.h:649:35: note: 'sysfs_get' declared here
+static inline struct kernfs_node *sysfs_get(struct kernfs_node *kn)
+                                  ^
+drivers/base/bus.c:81:5: error: incompatible integer to pointer conversion assigning to 'struct subsys_private *' from 'int' [-Wint-conversion]
+        sp = subsys_get(sp);
+           ^ ~~~~~~~~~~~~~~
+drivers/base/bus.c:100:2: error: call to undeclared function 'subsys_put'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        subsys_put(sp);
+        ^
+drivers/base/bus.c:100:2: note: did you mean 'sysfs_put'?
+./include/linux/sysfs.h:655:20: note: 'sysfs_put' declared here
+static inline void sysfs_put(struct kernfs_node *kn)
+                   ^
+  CC      kernel/bpf/bloom_filter.o
+drivers/base/bus.c:1236:2: error: call to undeclared function 'subsys_put'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        subsys_put(sp);
+        ^
+drivers/base/bus.c:1259:3: error: call to undeclared function 'subsys_put'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+                subsys_put(sp);
+
+
+
+
+
+
+
+
+
+
 drivers/cpufreq/amd-pstate.c:1334:13: error: call to undeclared function 'bus_get_dev_root'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
         dev_root = bus_get_dev_root(&cpu_subsys);
                    ^
