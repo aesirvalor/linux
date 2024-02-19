@@ -891,7 +891,7 @@ int bus_unregister_notifier(struct bus_type *bus, struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(bus_unregister_notifier);
 
-struct kset *bus_get_kset(struct bus_type *bus)
+struct kset *bus_get_kset(const struct bus_type *bus)
 {
 	return &bus->p->subsys;
 }
