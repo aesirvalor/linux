@@ -1,3 +1,18 @@
+FROM AMD-PSTATE
+ffa5096a7c338641f70fb06d4778e8cf400181a8 this has many merge conflicts!
+
+
+
+drivers/cpufreq/amd-pstate.c:1334:13: error: call to undeclared function 'bus_get_dev_root'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        dev_root = bus_get_dev_root(&cpu_subsys);
+                   ^
+drivers/cpufreq/amd-pstate.c:1334:11: error: incompatible integer to pointer conversion assigning to 'struct device *' from 'int' [-Wint-conversion]
+        dev_root = bus_get_dev_root(&cpu_subsys);
+                 ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
 commit 23587d856aa956183a083a0c16cc6e801aae10e7
 Author: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
 Date:   Mon Nov 13 15:06:19 2023 +0800

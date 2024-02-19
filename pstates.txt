@@ -1,0 +1,4287 @@
+commit 50b813b147e9eb6546a1fc49d4e703e6d23691f2
+Author: Vincent Guittot <vincent.guittot@linaro.org>
+Date:   Mon Dec 11 11:48:53 2023 +0100
+
+    cpufreq/cppc: Move and rename cppc_cpufreq_{perf_to_khz|khz_to_perf}()
+    
+    Move and rename cppc_cpufreq_perf_to_khz() and cppc_cpufreq_khz_to_perf() to
+    use them outside cppc_cpufreq in topology_init_cpu_capacity_cppc().
+    
+    Modify the interface to use struct cppc_perf_caps *caps instead of
+    struct cppc_cpudata *cpu_data as we only use the fields of cppc_perf_caps.
+    
+    cppc_cpufreq was converting the lowest and nominal freq from MHz to kHz
+    before using them. We move this conversion inside cppc_perf_to_khz and
+    cppc_khz_to_perf to make them generic and usable outside cppc_cpufreq.
+    
+    No functional change
+    
+    Signed-off-by: Vincent Guittot <vincent.guittot@linaro.org>
+    Signed-off-by: Ingo Molnar <mingo@kernel.org>
+    Tested-by: Pierre Gondois <pierre.gondois@arm.com>
+    Acked-by: Rafael J. Wysocki <rafael@kernel.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/r/20231211104855.558096-6-vincent.guittot@linaro.org
+
+commit 599457ba15403037b489fe536266a3d5f9efaed7
+Author: Vincent Guittot <vincent.guittot@linaro.org>
+Date:   Mon Dec 11 11:48:50 2023 +0100
+
+    cpufreq: Use the fixed and coherent frequency for scaling capacity
+    
+    cpuinfo.max_freq can change at runtime because of boost as an example. This
+    implies that the value could be different from the frequency that has been
+    used to compute the capacity of a CPU.
+    
+    The new arch_scale_freq_ref() returns a fixed and coherent frequency
+    that can be used to compute the capacity for a given frequency.
+    
+    [ Also fix a arch_set_freq_scale()  newline style wart in <linux/cpufreq.h>. ]
+    
+    Signed-off-by: Vincent Guittot <vincent.guittot@linaro.org>
+    Signed-off-by: Ingo Molnar <mingo@kernel.org>
+    Tested-by: Lukasz Luba <lukasz.luba@arm.com>
+    Reviewed-by: Lukasz Luba <lukasz.luba@arm.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Acked-by: Rafael J. Wysocki <rafael@kernel.org>
+    Link: https://lore.kernel.org/r/20231211104855.558096-3-vincent.guittot@linaro.org
+
+commit e95013156ad88e6a1e1db6545881f49183e2ee0a
+Author: Zhenguo Yao <yaozhenguo1@gmail.com>
+Date:   Wed Dec 13 18:28:08 2023 +0800
+
+    cpufreq: intel_pstate: Add Emerald Rapids support in no-HWP mode
+    
+    Users may disable HWP in firmware, in which case intel_pstate will give up
+    unless the CPU model is explicitly supported.
+    
+    See also the following past commits:
+    
+     - commit df51f287b5de ("cpufreq: intel_pstate: Add Sapphire Rapids support
+       in no-HWP mode")
+     - commit d8de7a44e11f ("cpufreq: intel_pstate: Add Skylake servers support")
+     - commit 706c5328851d ("cpufreq: intel_pstate: Add Cometlake support in
+       no-HWP mode")
+     - commit fbdc21e9b038 ("cpufreq: intel_pstate: Add Icelake servers support in
+       no-HWP mode")
+     - commit 71bb5c82aaae ("cpufreq: intel_pstate: Add Tigerlake support in
+       no-HWP mode")
+    
+    Signed-off-by: Zhenguo Yao <yaozhenguo1@gmail.com>
+    Acked-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    [ rjw: Changelog edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 0990319a0400db1d6069b5549327cd9105a266d5
+Author: Gregory CLEMENT <gregory.clement@bootlin.com>
+Date:   Fri Dec 15 16:37:06 2023 +0100
+
+    cpufreq: armada-8k: Fix parameter type warning
+    
+    The second parameter of clk_get() is of type 'const char *', so use
+    NULL instead of the integer 0 to resolve a sparse warning:
+    
+    drivers/cpufreq/armada-8k-cpufreq.c:60:40: warning: Using plain integer as NULL pointer
+    drivers/cpufreq/armada-8k-cpufreq.c:168:40: warning: Using plain integer as NULL pointer
+    
+    Reported-by: kernel test robot <lkp@intel.com>
+    Signed-off-by: Gregory CLEMENT <gregory.clement@bootlin.com>
+    Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit c4a5118a3ae1eadc687d84eef9431f9e13eb015c
+Author: Alexandra Diupina <adiupina@astralinux.ru>
+Date:   Tue Dec 5 18:12:20 2023 +0300
+
+    cpufreq: scmi: process the result of devm_of_clk_add_hw_provider()
+    
+    devm_of_clk_add_hw_provider() may return an errno, so
+    add a return value check
+    
+    Found by Linux Verification Center (linuxtesting.org) with SVACE.
+    
+    Fixes: 8410e7f3b31e ("cpufreq: scmi: Fix OPP addition failure with a dummy clock provider")
+    Signed-off-by: Alexandra Diupina <adiupina@astralinux.ru>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 2719675fa8111a8d7a060133e1dd4797d20c9754
+Author: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Date:   Mon Nov 20 10:59:42 2023 -0800
+
+    cpufreq: intel_pstate: Prioritize firmware-provided balance performance EPP
+    
+    The platform firmware can provide a balance performance EPP value by
+    enabling HWP and programming the EPP to the desired value.
+    
+    However, currently this only takes effect for processors listed in
+    intel_epp_balance_perf[], so in order to enable a new processor model
+    to utilize this mechanism, that table needs to be updated.  It arguably
+    should not be necessary to modify the kernel to work properly with
+    every new generation of processors, though, and distributions that don't
+    always ship the most recent kernels should be able to run reasonably well
+    on new hardware without code changes.
+    
+    For this reason, move the check to avoid updating the EPP when the balance
+    performance EPP is unmodified from the power-up default of 0x80 after the
+    check that allows the firmware-provided balance performance EPP value to
+    be retrieved.  This will cause the code to always look for the firmware-
+    provided value before consulting intel_epp_balance_perf[] and the handling
+    of new hardware will not depend on whether or not that thable has been
+    updated yet.
+    
+    Signed-off-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    [ rjw: Subject and changelog edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 142c169b31beb364ef39385b4e88735bd51d37fe
+Author: Ayush Jain <ayush.jain3@amd.com>
+Date:   Fri Nov 3 15:18:15 2023 +0530
+
+    cpufreq/amd-pstate: Only print supported EPP values for performance governor
+    
+    show_energy_performance_available_preferences() to show only supported
+    values which is performance in performance governor policy.
+    
+    -------Before--------
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/scaling_driver
+    amd-pstate-epp
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
+    performance
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/energy_performance_preference
+    performance
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/energy_performance_available_preferences
+    default performance balance_performance balance_power power
+    
+    -------After--------
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/scaling_driver
+    amd-pstate-epp
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
+    performance
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/energy_performance_preference
+    performance
+    $ cat /sys/devices/system/cpu/cpu1/cpufreq/energy_performance_available_preferences
+    performance
+    
+    Fixes: ffa5096a7c33 ("cpufreq: amd-pstate: implement Pstate EPP support for the AMD processors")
+    Suggested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Ayush Jain <ayush.jain3@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit febab20caebac959fdc3d7520bc52de8b1184455
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Fri Nov 17 06:38:39 2023 +0000
+
+    cpufreq/amd-pstate: Fix scaling_min_freq and scaling_max_freq update
+    
+    When amd_pstate is running, writing to scaling_min_freq and
+    scaling_max_freq has no effect. These values are only passed to the
+    policy level, but not to the platform level. This means that the
+    platform does not know about the frequency limits set by the user.
+    
+    To fix this, update the min_perf and max_perf values at the platform
+    level whenever the user changes the scaling_min_freq and scaling_max_freq
+    values.
+    
+    Fixes: ffa5096a7c33 ("cpufreq: amd-pstate: implement Pstate EPP support for the AMD processors")
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit bb87be267b8ee9b40917fb5bf51be5ddb33c37c2
+Author: Gautham R. Shenoy <gautham.shenoy@amd.com>
+Date:   Mon Nov 27 16:41:21 2023 +0530
+
+    cpufreq/amd-pstate: Fix the return value of amd_pstate_fast_switch()
+    
+    cpufreq_driver->fast_switch() callback expects a frequency as a return
+    value. amd_pstate_fast_switch() was returning the return value of
+    amd_pstate_update_freq(), which only indicates a success or failure.
+    
+    Fix this by making amd_pstate_fast_switch() return the target_freq
+    when the call to amd_pstate_update_freq() is successful, and return
+    the current frequency from policy->cur when the call to
+    amd_pstate_update_freq() is unsuccessful.
+    
+    Fixes: 4badf2eb1e98 ("cpufreq: amd-pstate: Add ->fast_switch() callback")
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Reviewed-by: Perry Yuan <perry.yuan@amd.com>
+    Cc: 6.4+ <stable@vger.kernel.org> # v6.4+
+    Signed-off-by: Gautham R. Shenoy <gautham.shenoy@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit d6048a19a7104ce90dcc140d03dbe5796af3acd4
+Author: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+Date:   Tue Nov 14 11:07:44 2023 +0100
+
+    cpufreq: qcom-nvmem: Preserve PM domain votes in system suspend
+    
+    >From the Linux point of view, the power domains used by the CPU must
+    stay always-on. This is because we still need the CPU to keep running
+    until the last instruction, which will typically be a firmware call that
+    shuts down the CPU cleanly.
+    
+    At the moment the power domain votes (enable + performance state) are
+    dropped during system suspend, which means the CPU could potentially
+    malfunction while entering suspend.
+    
+    We need to distinguish between two different setups used with
+    qcom-cpufreq-nvmem:
+    
+     1. CPR power domain: The backing regulator used by CPR should stay
+        always-on in Linux; it is typically disabled automatically by
+        hardware when the CPU enters a deep idle state. However, we
+        should pause the CPR state machine during system suspend.
+    
+     2. RPMPD: The power domains used by the CPU should stay always-on
+        in Linux (also across system suspend). The CPU typically only
+        uses the *_AO ("active-only") variants of the power domains in
+        RPMPD. For those, the RPM firmware will automatically drop
+        the votes internally when the CPU enters a deep idle state.
+    
+    Make this work correctly by calling device_set_awake_path() on the
+    virtual genpd devices, so that the votes are maintained across system
+    suspend. The power domain drivers need to set GENPD_FLAG_ACTIVE_WAKEUP
+    to opt into staying on during system suspend.
+    
+    For now we only set this for the RPMPD case. For CPR, not setting it
+    will ensure the state machine is still paused during system suspend,
+    while the backing regulator will stay on with "regulator-always-on".
+    
+    Signed-off-by: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+    Reviewed-by: Ulf Hansson <ulf.hansson@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 5cbff51e709a72a60b0416b00521b835a1f9a3d5
+Author: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+Date:   Tue Nov 14 11:07:43 2023 +0100
+
+    cpufreq: qcom-nvmem: Enable virtual power domain devices
+    
+    The genpd core caches performance state votes from devices that are
+    runtime suspended as of commit 3c5a272202c2 ("PM: domains: Improve
+    runtime PM performance state handling"). They get applied once the
+    device becomes active again.
+    
+    To attach the power domains needed by qcom-cpufreq-nvmem the OPP core
+    calls genpd_dev_pm_attach_by_id(). This results in "virtual" dummy
+    devices that use runtime PM only to control the enable and performance
+    state for the attached power domain.
+    
+    However, at the moment nothing ever resumes the virtual devices created
+    for qcom-cpufreq-nvmem. They remain permanently runtime suspended. This
+    means that performance state votes made during cpufreq scaling get
+    always cached and never applied to the hardware.
+    
+    Fix this by enabling the devices after attaching them.
+    
+    Without this fix performance states votes are silently ignored, and the
+    CPU/CPR voltage is never adjusted. This has been broken since 5.14 but
+    for some reason no one noticed this on QCS404 so far.
+    
+    Fixes: 1cb8339ca225 ("cpufreq: qcom: Add support for qcs404 on nvmem driver")
+    Signed-off-by: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+    Reviewed-by: Ulf Hansson <ulf.hansson@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 2e4e0984c7d696cc74cf2fd7e7f62997f0e9ebe6
+Author: Christoph Niedermaier <cniedermaier@dh-electronics.com>
+Date:   Wed Nov 22 14:41:13 2023 +0100
+
+    cpufreq: imx6q: Don't disable 792 Mhz OPP unnecessarily
+    
+    For a 900MHz i.MX6ULL CPU the 792MHz OPP is disabled. There is no
+    convincing reason to disable this OPP. If a CPU can run at 900MHz,
+    it should also be able to cope with 792MHz. Looking at the voltage
+    level of 792MHz in [1] (page 24, table 10. "Operating Ranges") the
+    current defined OPP is above the minimum. So the voltage level
+    shouldn't be a problem. However in [2] (page 24, table 10.
+    "Operating Ranges"), it is not mentioned that 792MHz OPP isn't
+    allowed. Change it to only disable 792MHz OPP for i.MX6ULL types
+    below 792 MHz.
+    
+    [1] https://www.nxp.com/docs/en/data-sheet/IMX6ULLIEC.pdf
+    [2] https://www.nxp.com/docs/en/data-sheet/IMX6ULLCEC.pdf
+    
+    Fixes: 0aa9abd4c212 ("cpufreq: imx6q: check speed grades for i.MX6ULL")
+    Signed-off-by: Christoph Niedermaier <cniedermaier@dh-electronics.com>
+    Reviewed-by: Marek Vasut <marex@denx.de>
+    Reviewed-by: Fabio Estevam <festevam@denx.de>
+    [ Viresh: Edited subject ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 5b5b5806f22390808b8e8fa180fe35b003a4a74d
+Author: Varadarajan Narayanan <quic_varada@quicinc.com>
+Date:   Tue Oct 31 12:41:39 2023 +0530
+
+    cpufreq: qcom-nvmem: Introduce cpufreq for ipq95xx
+    
+    IPQ95xx SoCs have different OPPs available for the CPU based on
+    the SoC variant. This can be determined from an eFuse register
+    present in the silicon.
+    
+    Added support for ipq95xx on nvmem driver which helps to
+    determine OPPs at runtime based on the eFuse register which
+    has the CPU frequency limits. opp-supported-hw dt binding
+    can be used to indicate the available OPPs for each limit.
+    
+    Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+    Signed-off-by: Praveenkumar I <ipkumar@codeaurora.org>
+    Signed-off-by: Kathiravan T <quic_kathirav@quicinc.com>
+    Signed-off-by: Varadarajan Narayanan <quic_varada@quicinc.com>
+    [ Viresh: Fixed subject ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit ba5a61a08d83b18b99c461b4ddb9009947a4aa0e
+Author: Varadarajan Narayanan <quic_varada@quicinc.com>
+Date:   Tue Oct 31 12:41:38 2023 +0530
+
+    cpufreq: qcom-nvmem: Enable cpufreq for ipq53xx
+    
+    IPQ53xx have different OPPs available for the CPU based on
+    SoC variant. This can be determined through use of an eFuse
+    register present in the silicon.
+    
+    Added support for ipq53xx on nvmem driver which helps to
+    determine OPPs at runtime based on the eFuse register which
+    has the CPU frequency limits. opp-supported-hw dt binding
+    can be used to indicate the available OPPs for each limit.
+    
+    nvmem driver also creates the "cpufreq-dt" platform_device after
+    passing the version matching data to the OPP framework so that the
+    cpufreq-dt handles the actual cpufreq implementation.
+    
+    Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+    Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
+    Signed-off-by: Kathiravan T <quic_kathirav@quicinc.com>
+    Signed-off-by: Varadarajan Narayanan <quic_varada@quicinc.com>
+    [ Viresh: Fixed subject ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 0b9cd949136f1b63f7aa9424b6e583a1ab261e36
+Author: Robert Marko <robimarko@gmail.com>
+Date:   Fri Oct 13 19:20:02 2023 +0200
+
+    cpufreq: qcom-nvmem: add support for IPQ8074
+    
+    IPQ8074 comes in 3 families:
+    * IPQ8070A/IPQ8071A (Acorn) up to 1.4GHz
+    * IPQ8172/IPQ8173/IPQ8174 (Oak) up to 1.4GHz
+    * IPQ8072A/IPQ8074A/IPQ8076A/IPQ8078A (Hawkeye) up to 2.2GHz
+    
+    So, in order to be able to share one OPP table lets add support for IPQ8074
+    family based of SMEM SoC ID-s as speedbin fuse is always 0 on IPQ8074.
+    
+    IPQ8074 compatible is blacklisted from DT platdev as the cpufreq device
+    will get created by NVMEM CPUFreq driver.
+    
+    Signed-off-by: Robert Marko <robimarko@gmail.com>
+    Acked-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    [ Viresh: Fixed rebase conflict. ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 9e3254ff645d805b52355ebff75ca21885f2c78a
+Author: Alexander Stein <alexander.stein@ew.tq-group.com>
+Date:   Mon Oct 23 11:47:01 2023 +0200
+
+    cpufreq: arm: Kconfig: Add i.MX7 to supported SoC for ARM_IMX_CPUFREQ_DT
+    
+    Since commit a5a9dffcc903 ("ARM: imx: Switch imx7d to imx-cpufreq-dt
+    for speed-grading") i.MX7 uses this driver as well. Add it to the
+    description text.
+    
+    Signed-off-by: Alexander Stein <alexander.stein@ew.tq-group.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 4a3754f73ef48518a98c3c3a5e0edb9b605740cf
+Author: Christian Marangi <ansuelsmth@gmail.com>
+Date:   Wed Oct 25 15:04:27 2023 +0530
+
+    cpufreq: qcom-nvmem: add support for IPQ8064
+    
+    IPQ8064 comes in 3 families:
+    * IPQ8062 up to 1.0GHz
+    * IPQ8064/IPQ8066/IPQ8068 up to 1.4GHz
+    * IPQ8065/IPQ8069 up to 1.7Ghz
+    
+    So, in order to be able to support one OPP table, add support for
+    IPQ8064 family based of SMEM SoC ID-s and correctly set the version so
+    opp-supported-hw can be correctly used.
+    
+    Bit are set with the following logic:
+    * IPQ8062 BIT 0
+    * IPQ8064/IPQ8066/IPQ8068 BIT 1
+    * IPQ8065/IPQ8069 BIT 2
+    
+    speed is never fused, only pvs values are fused.
+    
+    IPQ806x SoC doesn't have pvs_version so we drop and we use the new
+    pattern:
+    opp-microvolt-speed0-pvs<PSV_VALUE>
+    
+    Example:
+    - for ipq8062 psv2
+      opp-microvolt-speed0-pvs2 = < 925000 878750 971250>
+    
+    Fixes: a8811ec764f9 ("cpufreq: qcom: Add support for krait based socs")
+    Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+    [ Viresh: Fixed rebase conflict. ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit ff63282ed2271d242baaa2026cd8acb0c0b990ff
+Author: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Date:   Thu Oct 19 12:50:09 2023 +0200
+
+    cpufreq: qcom-nvmem: also accept operating-points-v2-krait-cpu
+    
+    the qcom-cpufreq-nvmem driver attempts to support both Qualcomm Kryo
+    (newer 64-bit ARMv8 cores) and Krait (older 32-bit ARMv7 cores). It
+    makes no sense to use 'operating-points-v2-kryo-cpu' compatibility node
+    for the Krait cores. Add support for 'operating-points-v2-krait-cpu'
+    compatibility string.
+    
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+    Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit a243a1ed7b4a410b588404592b2028e0cbed8d48
+Author: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Date:   Thu Oct 19 12:50:08 2023 +0200
+
+    cpufreq: qcom-nvmem: drop pvs_ver for format a fuses
+    
+    The fuses used on msm8960 / apq8064 / ipq806x families of devices do not
+    have the pvs version. Drop this argument from parsing function.
+    
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+    Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 47e161a7873b0891f4e01a69a839f6161d816ea8
+Author: Robert Marko <robimarko@gmail.com>
+Date:   Wed Oct 25 14:57:57 2023 +0530
+
+    cpufreq: qcom-nvmem: add support for IPQ6018
+    
+    IPQ6018 SoC series comes in multiple SKU-s, and not all of them support
+    high frequency OPP points.
+    
+    SoC itself does however have a single bit in QFPROM to indicate the CPU
+    speed-bin.
+    That bit is used to indicate frequency limit of 1.5GHz, but that alone is
+    not enough as IPQ6000 only goes up to 1.2GHz, but SMEM ID can be used to
+    limit it further.
+    
+    IPQ6018 compatible is blacklisted from DT platdev as the cpufreq device
+    will get created by NVMEM CPUFreq driver.
+    
+    Signed-off-by: Robert Marko <robimarko@gmail.com>
+    [ Viresh: Fixed rebase conflict. ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit f0d64f4ae793fc17d5e9dad3e775367d8eb40722
+Author: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+Date:   Wed Oct 18 10:06:04 2023 +0200
+
+    cpufreq: qcom-nvmem: Add MSM8909
+    
+    When the MSM8909 SoC is used together with the PM8909 PMIC the primary
+    power supply for the CPU (VDD_APC) is shared with other components to
+    the SoC, namely the VDD_CX power domain typically supplied by the PM8909
+    S1 regulator. This means that all votes for necessary performance states
+    go via the RPM firmware which collects the requirements from all the
+    processors in the SoC. The RPM firmware then chooses the actual voltage
+    based on the performance states ("corners"), depending on calibration
+    values in the NVMEM and other factors.
+    
+    The MSM8909 SoC is also sometimes used with the PM8916 or PM660 PMIC.
+    In that case there is a dedicated regulator connected to VDD_APC and
+    Linux is responsible to do adaptive voltage scaling using CPR (similar
+    to the existing code for QCS404).
+    
+    This difference can be described in the device tree, by either assigning
+    the CPU a power domain from RPMPD or from the CPR driver.
+    
+    Describe this using "perf" as generic power domain name, which is also
+    used already for SCMI based platforms.
+    
+    Also add a simple function that reads the speedbin from a NVMEM cell
+    and sets it as-is for opp-supported-hw. The actual bit position can be
+    described in the device tree without additional driver changes.
+    
+    Signed-off-by: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+    Acked-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Reviewed-by: Ulf Hansson <ulf.hansson@linaro.org>
+    [ Viresh: Fixed rebase conflict. ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 2a5d46c3ad6b0e62d2b04356ad999d504fb564e0
+Author: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+Date:   Wed Oct 18 10:06:02 2023 +0200
+
+    cpufreq: qcom-nvmem: Simplify driver data allocation
+    
+    Simplify the allocation and cleanup of driver data by using devm
+    together with a flexible array. Prepare for adding additional per-CPU
+    data by defining a struct qcom_cpufreq_drv_cpu instead of storing the
+    opp_tokens directly.
+    
+    Signed-off-by: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit ea167a7fc2426f7685c3735e104921c1a20a6d3f
+Author: Christian Marangi <ansuelsmth@gmail.com>
+Date:   Tue Oct 24 20:30:14 2023 +0200
+
+    cpufreq: stats: Fix buffer overflow detection in trans_stats()
+    
+    Commit 3c0897c180c6 ("cpufreq: Use scnprintf() for avoiding potential
+    buffer overflow") switched from snprintf to the more secure scnprintf
+    but never updated the exit condition for PAGE_SIZE.
+    
+    As the commit say and as scnprintf document, what scnprintf returns what
+    is actually written not counting the '\0' end char. This results in the
+    case of len exceeding the size, len set to PAGE_SIZE - 1, as it can be
+    written at max PAGE_SIZE - 1 (as '\0' is not counted)
+    
+    Because of len is never set to PAGE_SIZE, the function never break early,
+    never prints the warning and never return -EFBIG.
+    
+    Fix this by changing the condition to PAGE_SIZE - 1 to correctly trigger
+    the error.
+    
+    Cc: 5.10+ <stable@vger.kernel.org> # 5.10+
+    Fixes: 3c0897c180c6 ("cpufreq: Use scnprintf() for avoiding potential buffer overflow")
+    Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+    [ rjw: Subject and changelog edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 21135104a67ec0434fd0479fd663020d19ec68cd
+Author: Florian Fainelli <florian.fainelli@broadcom.com>
+Date:   Wed Oct 11 09:46:54 2023 -0700
+
+    cpufreq: ARM_BRCMSTB_AVS_CPUFREQ cannot be used with ARM_SCMI_CPUFREQ
+    
+    The brcmstb-avs-cpufreq driver is considered a legacy driver and since
+    2018, ARCH_BRCMSTB systems have been using scmi-cpufreq. As a matter of
+    fact, when SCMI is in use, brcmstb-avs-cpufreq is unusable since the
+    SCMI firmware takes over, this can result in various problems, including
+    external synchronous aborts.
+    
+    Express those constraints such that the driver is not enabled by default
+    when SCMI CPU frequency scaling is in use.
+    
+    Signed-off-by: Florian Fainelli <florian.fainelli@broadcom.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 304d9a0299f2afb54a699a9dcae7ed2f7fb20623
+Author: Bryan Brattlof <bb@ti.com>
+Date:   Tue Oct 10 12:55:27 2023 -0500
+
+    cpufreq: ti-cpufreq: Add opp support for am62p5 SoCs
+    
+    The am62p5 is a variation of the am625 and the am62a7 SoC families. Add
+    the am62p5 to the list using the same cpufreq data as the rest of the
+    am62x extended family.
+    
+    Signed-off-by: Bryan Brattlof <bb@ti.com>
+    Reviewed-by: Dhruva Gole <d-gole@ti.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 8b8eb859b5a71e0eaf7422c366d936ac57e5e76e
+Author: Bryan Brattlof <bb@ti.com>
+Date:   Tue Oct 10 12:55:26 2023 -0500
+
+    cpufreq: dt-platdev: add am62p5 to blocklist
+    
+    The am62p5 family of SoCs is a variation of the am625 and am62a7 SoC
+    family. Add this device along with the devices which will use the
+    operating-points-v2 property.
+    
+    Signed-off-by: Bryan Brattlof <bb@ti.com>
+    Reviewed-by: Dhruva Gole <d-gole@ti.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit c12f0d0ffade589599a43b0d0f0965579ca80f76
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Mon Oct 9 13:54:23 2023 +0530
+
+    cpufreq: tegra194: remove redundant AND with cpu_online_mask
+    
+    Remove redundant 'AND' with cpu_online_mask as the policy->cpus always
+    contains only the currently online CPUs.
+    
+    Suggested-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/lkml/20231003050019.a6mcchw2o2z2wkrh@vireshk-i7/
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    [ Viresh: Fix rebase conflict ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit a60a556788752a5696960ed11409a552b79e68e8
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Wed Oct 4 19:35:37 2023 +0530
+
+    cpufreq: tegra194: use refclk delta based loop instead of udelay
+    
+    Use reference clock count based loop instead of "udelay()" for
+    sampling of counters to improve the accuracy of re-generated CPU
+    frequency. "udelay()" internally calls "WFE" which stops the
+    counters and results in bigger delta between the last set freq
+    and the re-generated value from counters. The counter sampling
+    window used in loop is the minimum number of reference clock
+    cycles which is known to give a stable value of CPU frequency.
+    The change also helps to reduce the sampling window from "500us"
+    to "<50us".
+    
+    Suggested-by: Antti Miettinen <amiettinen@nvidia.com>
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 6b121b4cf7e1f598beecf592d6184126b46eca46
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Wed Oct 4 19:35:36 2023 +0530
+
+    cpufreq: tegra194: save CPU data to avoid repeated SMP calls
+    
+    Currently, we make SMP call on every frequency set request to get the
+    physical 'CPU ID' and 'CLUSTER ID' for the target CPU. This change
+    optimizes the repeated calls by storing the physical IDs and the per
+    core frequency register offset for all CPUs during boot. Later this
+    info is used directly when required to set the frequency or read it
+    from ACTMON counters.
+    
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit e7a1b32e43b194bbf930281ae7f5149c420cd122
+Author: Pierre Gondois <pierre.gondois@arm.com>
+Date:   Thu Oct 5 15:41:20 2023 +0200
+
+    cpufreq: Rebuild sched-domains when removing cpufreq driver
+    
+    The Energy Aware Scheduler (EAS) relies on the schedutil governor.
+    When moving to/from the schedutil governor, sched domains must be
+    rebuilt to allow re-evaluating the enablement conditions of EAS.
+    This is done through sched_cpufreq_governor_change().
+    
+    Having a cpufreq governor assumes a cpufreq driver is running.
+    Inserting/removing a cpufreq driver should trigger a re-evaluation
+    of EAS enablement conditions, avoiding to see EAS enabled when
+    removing a running cpufreq driver.
+    
+    Rebuild the sched domains in schedutil's sugov_init()/sugov_exit(),
+    allowing to check EAS's enablement condition whenever schedutil
+    governor is initialized/exited from.
+    Move relevant code up in schedutil.c to avoid a split and conditional
+    function declaration.
+    Rename sched_cpufreq_governor_change() to sugov_eas_rebuild_sd().
+    
+    Signed-off-by: Pierre Gondois <pierre.gondois@arm.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 9ef0ad49cc860c0860026c01abea68878c6d72f7
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Sep 12 06:10:57 2023 +0000
+
+    cpufreq: userspace: Move is_managed indicator into per-policy structure
+    
+    The userspace governor uses the 'cpu' field of cpufreq_policy structure
+    to track if it is allowed to set the speed of the policy.
+    
+    However, there is a window where the 'cpu' field is equal to the value
+    of nr_cpus_id when all affected CPUs of policy are offline, which is an
+    illegal value to get the per-CPU variable.
+    
+    To avoid this issue, modify the governor to use a per-policy indicator
+    to track if the policy is managed.
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    [ rjw: Changelog edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 285189c57391360701af348cd57ca0ba8cbf7ff6
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Sep 12 06:10:56 2023 +0000
+
+    cpufreq: userspace: Use fine-grained mutex in userspace governor
+    
+    The userspace governor currently uses a big global mutex to avoid the
+    race condition on the governor_data field of cpufreq_policy structure.
+    
+    This leads to a low concurrency if multiple userspace applications are
+    trying to set the speed of different policies at the same time.
+    
+    Introduce a per-policy mutex to allow the updating of different policies
+    to be performed concurrently, improving overall concurrency.
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 842c34a2668f68ebe15d0fc9dc19d33733bb428d
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Sep 12 06:09:42 2023 +0000
+
+    cpufreq: conservative: Simplify the condition of storing 'down_threshold'
+    
+    The governor currently checks if the input new down_threshold is less
+    than 100 before storing it, but the up_threshold field of dbs_data
+    structure is also limited to be less than 100, so this check is
+    unnecessary and remove it.
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 0faf84caee63a5f331bda130265fdceb7d4101b5
+Author: Justin Stitt <justinstitt@google.com>
+Date:   Wed Sep 13 00:07:21 2023 +0000
+
+    cpufreq: Replace deprecated strncpy() with strscpy()
+    
+    `strncpy` is deprecated for use on NUL-terminated destination strings [1].
+    
+    We should prefer more robust and less ambiguous string interfaces.
+    
+    Both `policy->last_governor` and `default_governor` are expected to be
+    NUL-terminated which is shown by their heavy usage with other string
+    apis like `strcmp`.
+    
+    A suitable replacement is `strscpy` [2] due to the fact that it guarantees
+    NUL-termination on the destination buffer.
+    
+    Link: https://www.kernel.org/doc/html/latest/process/deprecated.html#strncpy-on-nul-terminated-strings [1]
+    Link: https://manpages.debian.org/testing/linux-manual-4.8/strscpy.9.en.html [2]
+    Link: https://github.com/KSPP/linux/issues/90
+    Cc: linux-hardening@vger.kernel.org
+    Signed-off-by: Justin Stitt <justinstitt@google.com>
+    Reviewed-by: Kees Cook <keescook@chromium.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/r/20230913-strncpy-drivers-cpufreq-cpufreq-c-v1-1-f1608bfeff63@google.com
+    Signed-off-by: Kees Cook <keescook@chromium.org>
+
+commit 40f6be3ef2bed759ad91d335d36f8dc9d64c87e2
+Author: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+Date:   Tue Sep 12 11:40:16 2023 +0200
+
+    cpufreq: dt: platdev: Add MSM8909 to blocklist
+    
+    MSM8909 uses qcom-cpufreq-nvmem to attach power domains and to parse the
+    speedbin from NVMEM (for opp-supported-hw).
+    
+    Signed-off-by: Stephan Gerhold <stephan.gerhold@kernkonzept.com>
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    [ Viresh: Fixed order in table ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit b9a663c4c224372ae847f500fdadcc1bdc9e8425
+Author: Rob Herring <robh@kernel.org>
+Date:   Mon Sep 25 14:02:35 2023 -0500
+
+    cpufreq: pmac32: Use of_property_read_reg() to parse "reg"
+    
+    Use the recently added of_property_read_reg() helper to get the
+    untranslated "reg" address value.
+    
+    Signed-off-by: Rob Herring <robh@kernel.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit aa01dd7bc100af0bd230fc498d4a5750d0be73b2
+Author: Luca Weiss <luca.weiss@fairphone.com>
+Date:   Wed Aug 30 11:58:34 2023 +0200
+
+    cpufreq: Add QCM6490 to cpufreq-dt-platdev blocklist
+    
+    The Qualcomm QCM6490 platform uses the qcom-cpufreq-hw driver, so add it
+    to the cpufreq-dt-platdev driver's blocklist.
+    
+    Signed-off-by: Luca Weiss <luca.weiss@fairphone.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit bae8222a6c291dbe58c908dab5c2abd3a75d0d63
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Tue Aug 29 14:13:22 2023 +0530
+
+    cpufreq: tegra194: fix warning due to missing opp_put
+    
+    Fix the warning due to missing dev_pm_opp_put() call and hence
+    wrong refcount value. This causes below warning message when
+    trying to remove the module.
+    
+     Call trace:
+      dev_pm_opp_put_opp_table+0x154/0x15c
+      dev_pm_opp_remove_table+0x34/0xa0
+      _dev_pm_opp_cpumask_remove_table+0x7c/0xbc
+      dev_pm_opp_of_cpumask_remove_table+0x10/0x18
+      tegra194_cpufreq_exit+0x24/0x34 [tegra194_cpufreq]
+      cpufreq_remove_dev+0xa8/0xf8
+      subsys_interface_unregister+0x90/0xe8
+      cpufreq_unregister_driver+0x54/0x9c
+      tegra194_cpufreq_remove+0x18/0x2c [tegra194_cpufreq]
+      platform_remove+0x24/0x74
+      device_remove+0x48/0x78
+      device_release_driver_internal+0xc8/0x160
+      driver_detach+0x4c/0x90
+      bus_remove_driver+0x68/0xb8
+      driver_unregister+0x2c/0x58
+      platform_driver_unregister+0x10/0x18
+      tegra194_ccplex_driver_exit+0x14/0x1e0 [tegra194_cpufreq]
+      __arm64_sys_delete_module+0x184/0x270
+    
+    Fixes: f41e1442ac5b ("cpufreq: tegra194: add OPP support and set bandwidth")
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    [ Viresh: Add a blank line ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 92b2028b00ff987272a10fee980c7412ae7ebea6
+Author: Ulf Hansson <ulf.hansson@linaro.org>
+Date:   Fri Aug 25 13:26:31 2023 +0200
+
+    cpufreq: scmi: Add support to parse domain-id using #power-domain-cells
+    
+    The performance domain-id can be described in DT using the power-domains
+    property or the clock property. The latter is already supported, so let's
+    add support for the power-domains too.
+    
+    Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/r/20230825112633.236607-12-ulf.hansson@linaro.org
+    Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+
+commit 4f1f0bc8ed1647007ad4ad8d2b8ce0092bb22d43
+Author: Ulf Hansson <ulf.hansson@linaro.org>
+Date:   Fri Aug 25 13:26:26 2023 +0200
+
+    cpufreq: scmi: Avoid one OF parsing in scmi_get_sharing_cpus()
+    
+    The domain-id for the cpu_dev has already been parsed at the point when
+    scmi_get_sharing_cpus() is getting called. Let's pass it as an in-parameter
+    to avoid the unnecessary OF parsing.
+    
+    Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/r/20230825112633.236607-7-ulf.hansson@linaro.org
+    Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+
+commit 39dfa5b9e1f0fa63b811a0a87f1c2fb9c76a0456
+Author: Ulf Hansson <ulf.hansson@linaro.org>
+Date:   Fri Aug 25 13:26:24 2023 +0200
+
+    firmware: arm_scmi: Align perf ops to use domain-id as in-parameter
+    
+    Most scmi_perf_proto_ops are already using an "u32 domain" as an
+    in-parameter to indicate what performance domain we shall operate upon.
+    However, some of the ops are using a "struct device *dev", which means that
+    an additional OF parsing is needed each time the perf ops gets called, to
+    find the corresponding domain-id.
+    
+    To avoid the above, but also to make the code more consistent, let's
+    replace the in-parameter "struct device *dev" with an "u32 domain". Note
+    that, this requires us to make some corresponding changes to the scmi
+    cpufreq driver, so let's do that too.
+    
+    Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/r/20230825112633.236607-5-ulf.hansson@linaro.org
+    Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+
+commit e336baa4193ecc788a06c0c4659e400bb53689b4
+Author: Ulf Hansson <ulf.hansson@linaro.org>
+Date:   Fri Aug 25 13:26:23 2023 +0200
+
+    cpufreq: scmi: Prepare to move OF parsing of domain-id to cpufreq
+    
+    The OF parsing of the clock domain specifier seems to better belong in the
+    scmi cpufreq driver, rather than being implemented behind the generic
+    ->device_domain_id() perf protocol ops.
+    
+    To prepare to remove the ->device_domain_id() ops, let's implement the OF
+    parsing in the scmi cpufreq driver instead.
+    
+    Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/r/20230825112633.236607-4-ulf.hansson@linaro.org
+    Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+
+commit 37b6ddba967c601479bea418a7ac6ff16b6232b7
+Author: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Date:   Thu Sep 7 11:02:07 2023 -0700
+
+    cpufreq: intel_pstate: Revise global turbo disable check
+    
+    Setting global turbo flag based on CPU 0 P-state limits is problematic
+    as it limits max P-state request on every CPU on the system just based
+    on its P-state limits.
+    
+    There are two cases in which global.turbo_disabled flag is set:
+    - When the MSR_IA32_MISC_ENABLE_TURBO_DISABLE bit is set to 1
+    in the MSR MSR_IA32_MISC_ENABLE. This bit can be only changed by
+    the system BIOS before power up.
+    - When the max non turbo P-state is same as max turbo P-state for CPU 0.
+    
+    The second check is not a valid to decide global turbo state based on
+    the CPU 0. CPU 0 max turbo P-state can be same as max non turbo P-state,
+    but for other CPUs this may not be true.
+    
+    There is no guarantee that max P-state limits are same for every CPU. This
+    is possible that during fusing max P-state for a CPU is constrained. Also
+    with the Intel Speed Select performance profile, CPU 0 may not be present
+    in all profiles. In this case the max non turbo and turbo P-state can be
+    set to the lowest possible P-state by the hardware when switched to
+    such profile. Since max non turbo and turbo P-state is same,
+    global.turbo_disabled flag will be set.
+    
+    Once global.turbo_disabled is set, any scaling max and min frequency
+    update for any CPU will result in its max P-state constrained to the max
+    non turbo P-state.
+    
+    Hence remove the check of max non turbo P-state equal to max turbo P-state
+    of CPU 0 to set global turbo disabled flag.
+    
+    Signed-off-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    [ rjw: Subject edit ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit cf8e8658100d4eae80ce9b21f7a81cb024dd5057
+Author: Ard Biesheuvel <ardb@kernel.org>
+Date:   Thu Oct 20 15:54:33 2022 +0200
+
+    arch: Remove Itanium (IA-64) architecture
+    
+    The Itanium architecture is obsolete, and an informal survey [0] reveals
+    that any residual use of Itanium hardware in production is mostly HP-UX
+    or OpenVMS based. The use of Linux on Itanium appears to be limited to
+    enthusiasts that occasionally boot a fresh Linux kernel to see whether
+    things are still working as intended, and perhaps to churn out some
+    distro packages that are rarely used in practice.
+    
+    None of the original companies behind Itanium still produce or support
+    any hardware or software for the architecture, and it is listed as
+    'Orphaned' in the MAINTAINERS file, as apparently, none of the engineers
+    that contributed on behalf of those companies (nor anyone else, for that
+    matter) have been willing to support or maintain the architecture
+    upstream or even be responsible for applying the odd fix. The Intel
+    firmware team removed all IA-64 support from the Tianocore/EDK2
+    reference implementation of EFI in 2018. (Itanium is the original
+    architecture for which EFI was developed, and the way Linux supports it
+    deviates significantly from other architectures.) Some distros, such as
+    Debian and Gentoo, still maintain [unofficial] ia64 ports, but many have
+    dropped support years ago.
+    
+    While the argument is being made [1] that there is a 'for the common
+    good' angle to being able to build and run existing projects such as the
+    Grid Community Toolkit [2] on Itanium for interoperability testing, the
+    fact remains that none of those projects are known to be deployed on
+    Linux/ia64, and very few people actually have access to such a system in
+    the first place. Even if there were ways imaginable in which Linux/ia64
+    could be put to good use today, what matters is whether anyone is
+    actually doing that, and this does not appear to be the case.
+    
+    There are no emulators widely available, and so boot testing Itanium is
+    generally infeasible for ordinary contributors. GCC still supports IA-64
+    but its compile farm [3] no longer has any IA-64 machines. GLIBC would
+    like to get rid of IA-64 [4] too because it would permit some overdue
+    code cleanups. In summary, the benefits to the ecosystem of having IA-64
+    be part of it are mostly theoretical, whereas the maintenance overhead
+    of keeping it supported is real.
+    
+    So let's rip off the band aid, and remove the IA-64 arch code entirely.
+    This follows the timeline proposed by the Debian/ia64 maintainer [5],
+    which removes support in a controlled manner, leaving IA-64 in a known
+    good state in the most recent LTS release. Other projects will follow
+    once the kernel support is removed.
+    
+    [0] https://lore.kernel.org/all/CAMj1kXFCMh_578jniKpUtx_j8ByHnt=s7S+yQ+vGbKt9ud7+kQ@mail.gmail.com/
+    [1] https://lore.kernel.org/all/0075883c-7c51-00f5-2c2d-5119c1820410@web.de/
+    [2] https://gridcf.org/gct-docs/latest/index.html
+    [3] https://cfarm.tetaneutral.net/machines/list/
+    [4] https://lore.kernel.org/all/87bkiilpc4.fsf@mid.deneb.enyo.de/
+    [5] https://lore.kernel.org/all/ff58a3e76e5102c94bb5946d99187b358def688a.camel@physik.fu-berlin.de/
+    
+    Acked-by: Tony Luck <tony.luck@intel.com>
+    Signed-off-by: Ard Biesheuvel <ardb@kernel.org>
+
+commit 218a06a79d9a98a96ef46bb003d4d8adb0962056
+Author: Jie Zhan <zhanjie9@hisilicon.com>
+Date:   Tue Aug 22 20:48:37 2023 +0800
+
+    cpufreq: Support per-policy performance boost
+    
+    The boost control currently applies to the whole system.  However, users
+    may prefer to boost a subset of cores in order to provide prioritized
+    performance to workloads running on the boosted cores.
+    
+    Enable per-policy boost by adding a 'boost' sysfs interface under each
+    policy path.  This can be found at:
+    
+            /sys/devices/system/cpu/cpufreq/policy<*>/boost
+    
+    Same to the global boost switch, writing 1/0 to the per-policy 'boost'
+    enables/disables boost on a cpufreq policy respectively.
+    
+    The user view of global and per-policy boost controls should be:
+    
+    1. Enabling global boost initially enables boost on all policies, and
+    per-policy boost can then be enabled or disabled individually, given that
+    the platform does support so.
+    
+    2. Disabling global boost makes the per-policy boost interface illegal.
+    
+    Signed-off-by: Jie Zhan <zhanjie9@hisilicon.com>
+    Reviewed-by: Wei Xu <xuwei5@hisilicon.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 4c2fdf7393647a7b01a83f49c4a331d562016640
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Sat Aug 26 09:57:43 2023 +0000
+
+    cpufreq: pcc: Fix the potentinal scheduling delays in target_index()
+    
+    pcc_cpufreq_target():
+            cpufreq_freq_transition_begin();
+            spin_lock(&pcc_lock);
+            [critical section]
+            cpufreq_freq_transition_end();
+            spin_unlock(&pcc_lock);
+    
+    Above code has a performance issue, consider that Task0 executes
+    'cpufreq_freq_transition_end()' to wake Task1 and preempted imediatedly
+    without releasing 'pcc_lock', then Task1 needs to wait for Task0 to
+    release 'pcc_lock'. In the worst case, this locking order can result in
+    Task1 wasting two scheduling rounds before it can enter the critical
+    section.
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 916f13884042f615cfbfc0b42cc68dadee826f2a
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Aug 29 07:03:46 2023 +0000
+
+    cpufreq: governor: Free dbs_data directly when gov->init() fails
+    
+    Due to the kobject embedded in the dbs_data doest not has a release()
+    method yet, it needs to use kfree() to free dbs_data directly when
+    governor fails to allocate the tunner field of dbs_data.
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 61bfbf7951ba561dcbdd5357702d3cbc2d447812
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Aug 29 07:03:18 2023 +0000
+
+    cpufreq: Fix the race condition while updating the transition_task of policy
+    
+    The field 'transition_task' of policy structure is used to track the
+    task which is performing the frequency transition. Using this field to
+    print a warning once detect a case where the same task is calling
+    _begin() again before completing the preivous frequency transition via
+    the _end().
+    
+    However, there is a potential race condition in _end() and _begin() APIs
+    while updating the field 'transition_task' of policy, the scenario is
+    depicted below:
+    
+                 Task A                            Task B
+    
+            /* 1st freq transition */
+            Invoke _begin() {
+                    ...
+                    ...
+            }
+                                            /* 2nd freq transition */
+                                            Invoke _begin() {
+                                                    ... //waiting for A to
+                                                    ... //clear
+                                                    ... //transition_ongoing
+                                                    ... //in _end() for
+                                                    ... //the 1st transition
+                                                            |
+            Change the frequency                            |
+                                                            |
+            Invoke _end() {                                 |
+                    ...                                     |
+                    ...                                     |
+                    transition_ongoing = false;             V
+                                                    transition_ongoing = true;
+                                                    transition_task = current;
+                    transition_task = NULL;
+                    ... //A overwrites the task
+                    ... //performing the transition
+                    ... //result in error warning.
+            }
+    
+    To fix this race condition, the transition_lock of policy structure is
+    now acquired before updating policy structure in _end() API. Which ensure
+    that only one task can update the 'transition_task' field at a time.
+    
+    Link: https://lore.kernel.org/all/b3c61d8a-d52d-3136-fbf0-d1de9f1ba411@huawei.com/
+    Fixes: ca654dc3a93d ("cpufreq: Catch double invocations of cpufreq_freq_transition_begin/end")
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 1f464cb4a7febcc8b5ad325f3f9a83c8d4e4c199
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Aug 29 07:01:50 2023 +0000
+
+    cpufreq: Avoid printing kernel addresses in cpufreq_resume()
+    
+    The pointer value of policy and driver structure are currently printed
+    in the error messages of cpufreq_resume(), this is not recommended and
+    helpful.
+    
+    In order to be consistent with the error message in cpufreq_suspend()
+    and easier to understand, print the name of driver strcture and the
+    manage CPU of policy structure individually in the error messages of
+    cpufreq_resume().
+    
+    Link: https://lore.kernel.org/all/b7be717c-41d8-bbbf-3e97-3799948ab757@huawei.com
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit de0e85b29edfc68046d587c7d67bbd2bdc31b73f
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Fri Aug 25 16:46:17 2023 +0530
+
+    cpufreq: tegra194: remove opp table in exit hook
+    
+    Add exit hook and remove OPP table when the device gets unregistered.
+    This will fix the error messages when the CPU FREQ driver module is
+    removed and then re-inserted. It also fixes these messages while
+    onlining the first CPU from a policy whose all CPU's were previously
+    offlined.
+    
+     debugfs: File 'cpu5' in directory 'opp' already present!
+     debugfs: File 'cpu6' in directory 'opp' already present!
+     debugfs: File 'cpu7' in directory 'opp' already present!
+    
+    Fixes: f41e1442ac5b ("cpufreq: tegra194: add OPP support and set bandwidth")
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    [ Viresh: Dropped irrelevant change from it ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 03997da042dac73c69e60d91942c727c76828b65
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Sat Aug 26 09:51:13 2023 +0000
+
+    cpufreq: powernow-k8: Use related_cpus instead of cpus in driver.exit()
+    
+    Since the 'cpus' field of policy structure will become empty in the
+    cpufreq core API, it is better to use 'related_cpus' in the exit()
+    callback of driver.
+    
+    Fixes: c3274763bfc3 ("cpufreq: powernow-k8: Initialize per-cpu data-structures properly")
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit a3aa97be69a7cc14ddc2bb0add0b9c51cb74bf83
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Fri Aug 25 16:49:20 2023 +0530
+
+    cpufreq: tegra194: add online/offline hooks
+    
+    Implement the light-weight tear down and bring up helpers to reduce the
+    amount of work to do on CPU offline/online operation.
+    This change helps to make the hotplugging paths much faster.
+    
+    Suggested-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    Link: https://lore.kernel.org/lkml/20230816033402.3abmugb5goypvllm@vireshk-i7/
+    [ Viresh: Fixed rebase conflict ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 5f19d0969a9a29cff7fbbb0f758c9246e3f6beaf
+Author: Neil Armstrong <neil.armstrong@linaro.org>
+Date:   Mon Aug 21 09:39:14 2023 +0200
+
+    cpufreq: qcom-cpufreq-hw: add support for 4 freq domains
+    
+    Add support for up to 4 frequency domains as used on new
+    platforms.
+    
+    Signed-off-by: Neil Armstrong <neil.armstrong@linaro.org>
+    Acked-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 60dd283804479c4a52f995b713f448e2cd65b8c8
+Author: Swapnil Sapkal <swapnil.sapkal@amd.com>
+Date:   Fri Aug 18 11:44:52 2023 +0000
+
+    cpufreq: amd-pstate-ut: Fix kernel panic when loading the driver
+    
+    After loading the amd-pstate-ut driver, amd_pstate_ut_check_perf()
+    and amd_pstate_ut_check_freq() use cpufreq_cpu_get() to get the policy
+    of the CPU and mark it as busy.
+    
+    In these functions, cpufreq_cpu_put() should be used to release the
+    policy, but it is not, so any other entity trying to access the policy
+    is blocked indefinitely.
+    
+    One such scenario is when amd_pstate mode is changed, leading to the
+    following splat:
+    
+    [ 1332.103727] INFO: task bash:2929 blocked for more than 120 seconds.
+    [ 1332.110001]       Not tainted 6.5.0-rc2-amd-pstate-ut #5
+    [ 1332.115315] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+    [ 1332.123140] task:bash            state:D stack:0     pid:2929  ppid:2873   flags:0x00004006
+    [ 1332.123143] Call Trace:
+    [ 1332.123145]  <TASK>
+    [ 1332.123148]  __schedule+0x3c1/0x16a0
+    [ 1332.123154]  ? _raw_read_lock_irqsave+0x2d/0x70
+    [ 1332.123157]  schedule+0x6f/0x110
+    [ 1332.123160]  schedule_timeout+0x14f/0x160
+    [ 1332.123162]  ? preempt_count_add+0x86/0xd0
+    [ 1332.123165]  __wait_for_common+0x92/0x190
+    [ 1332.123168]  ? __pfx_schedule_timeout+0x10/0x10
+    [ 1332.123170]  wait_for_completion+0x28/0x30
+    [ 1332.123173]  cpufreq_policy_put_kobj+0x4d/0x90
+    [ 1332.123177]  cpufreq_policy_free+0x157/0x1d0
+    [ 1332.123178]  ? preempt_count_add+0x58/0xd0
+    [ 1332.123180]  cpufreq_remove_dev+0xb6/0x100
+    [ 1332.123182]  subsys_interface_unregister+0x114/0x120
+    [ 1332.123185]  ? preempt_count_add+0x58/0xd0
+    [ 1332.123187]  ? __pfx_amd_pstate_change_driver_mode+0x10/0x10
+    [ 1332.123190]  cpufreq_unregister_driver+0x3b/0xd0
+    [ 1332.123192]  amd_pstate_change_driver_mode+0x1e/0x50
+    [ 1332.123194]  store_status+0xe9/0x180
+    [ 1332.123197]  dev_attr_store+0x1b/0x30
+    [ 1332.123199]  sysfs_kf_write+0x42/0x50
+    [ 1332.123202]  kernfs_fop_write_iter+0x143/0x1d0
+    [ 1332.123204]  vfs_write+0x2df/0x400
+    [ 1332.123208]  ksys_write+0x6b/0xf0
+    [ 1332.123210]  __x64_sys_write+0x1d/0x30
+    [ 1332.123213]  do_syscall_64+0x60/0x90
+    [ 1332.123216]  ? fpregs_assert_state_consistent+0x2e/0x50
+    [ 1332.123219]  ? exit_to_user_mode_prepare+0x49/0x1a0
+    [ 1332.123223]  ? irqentry_exit_to_user_mode+0xd/0x20
+    [ 1332.123225]  ? irqentry_exit+0x3f/0x50
+    [ 1332.123226]  ? exc_page_fault+0x8e/0x190
+    [ 1332.123228]  entry_SYSCALL_64_after_hwframe+0x6e/0xd8
+    [ 1332.123232] RIP: 0033:0x7fa74c514a37
+    [ 1332.123234] RSP: 002b:00007ffe31dd0788 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+    [ 1332.123238] RAX: ffffffffffffffda RBX: 0000000000000008 RCX: 00007fa74c514a37
+    [ 1332.123239] RDX: 0000000000000008 RSI: 000055e27c447aa0 RDI: 0000000000000001
+    [ 1332.123241] RBP: 000055e27c447aa0 R08: 00007fa74c5d1460 R09: 000000007fffffff
+    [ 1332.123242] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000008
+    [ 1332.123244] R13: 00007fa74c61a780 R14: 00007fa74c616600 R15: 00007fa74c615a00
+    [ 1332.123247]  </TASK>
+    
+    Fix this by calling cpufreq_cpu_put() wherever necessary.
+    
+    Fixes: 14eb1c96e3a3 ("cpufreq: amd-pstate: Add test module for amd-pstate driver")
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Reviewed-by: Meng Li <li.meng@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Suggested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Swapnil Sapkal <swapnil.sapkal@amd.com>
+    [ rjw: Subject and changelog edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 8d6e5e8268e89979d86501dbb8385ce2e6154de1
+Author: Swapnil Sapkal <swapnil.sapkal@amd.com>
+Date:   Fri Aug 18 11:44:51 2023 +0000
+
+    cpufreq: amd-pstate-ut: Remove module parameter access
+    
+    In amd-pstate-ut, shared memory-based systems call
+    get_shared_mem() as part of amd_pstate_ut_check_enabled()
+    function. This function was written when CONFIG_X86_AMD_PSTATE
+    was tristate config and amd_pstate can be built as a module.
+    
+    Currently CONFIG_X86_AMD_PSTATE is a boolean config and module
+    parameter shared_mem is removed. But amd-pstate-ut code still
+    accesses this module parameter. Remove those accesses.
+    
+    Fixes: 456ca88d8a52 ("cpufreq: amd-pstate: change amd-pstate driver to be built-in type")
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Reviewed-by: Meng Li <li.meng@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Suggested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Swapnil Sapkal <swapnil.sapkal@amd.com>
+    [ rjw: Subject edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit d51847acb018d83186e4af67bc93f9a00a8644f7
+Author: Doug Smythies <dsmythies@telus.net>
+Date:   Sun Aug 20 13:46:49 2023 -0700
+
+    cpufreq: intel_pstate: set stale CPU frequency to minimum
+    
+    The intel_pstate CPU frequency scaling driver does not
+    use policy->cur and it is 0.
+    When the CPU frequency is outdated arch_freq_get_on_cpu()
+    will default to the nominal clock frequency when its call to
+    cpufreq_quick_getpolicy_cur returns the never updated 0.
+    Thus, the listed frequency might be outside of currently
+    set limits. Some users are complaining about the high
+    reported frequency, albeit stale, when their system is
+    idle and/or it is above the reduced maximum they have set.
+    
+    This patch will maintain policy_cur for the intel_pstate
+    driver at the current minimum CPU frequency.
+    
+    Reported-by: Yang Jie <yang.jie@linux.intel.com>
+    Closes: https://bugzilla.kernel.org/show_bug.cgi?id=217597
+    Signed-off-by: Doug Smythies <dsmythies@telus.net>
+    [ rjw: White space damage fixes and comment adjustment ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit ed9571647eff3dd7a53068f83338530959c7ace4
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Fri Aug 18 09:50:00 2023 +0000
+
+    cpufreq: stats: Improve the performance of cpufreq_stats_create_table()
+    
+    In the worst case, the freq_table of policy data is not sorted and
+    contains duplicate frequencies, this means that it needs to iterate
+    through the entire freq_table of policy to ensure each frequency is
+    unique in the freq_table of stats data, this has a time complexity of
+    O(N^2), where N is the number of frequencies in the freq_table of
+    policy.
+    
+    However, if the policy.freq_table is already sorted and contains no
+    duplicate frequencies, it can reduce the time complexity of creating
+    stats.freq_table to O(N), the 'freq_table_sorted' field of policy data
+    can be used to indicate whether the policy.freq_table is sorted.
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Reviewed-by: Dhruva Gole <d-gole@ti.com>
+    [ rjw: Fix typo in changelog, remove redundant parens ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit e613d8cff54736d4fa73730ccaa0ecbe39140782
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Thu Aug 17 07:47:56 2023 +0000
+
+    cpufreq: cppc: Set fie_disabled to FIE_DISABLED if fails to create kworker_fie
+    
+    The function cppc_freq_invariance_init() may failed to create
+    kworker_fie, make it more robust by setting fie_disabled to FIE_DISBALED
+    to prevent an invalid pointer dereference in kthread_destroy_worker(),
+    which called from cppc_freq_invariance_exit().
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 6a4fec4f6d30a325a1b27be70729145484e6fe9f
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Aug 15 09:40:17 2023 +0800
+
+    cpufreq: cppc: cppc_cpufreq_get_rate() returns zero in all error cases.
+    
+    The cpufreq framework used to use the zero of return value to reflect
+    the cppc_cpufreq_get_rate() had failed to get current frequecy and treat
+    all positive integer to be succeed. Since cppc_get_perf_ctrs() returns a
+    negative integer in error case, so it is better to convert the value to
+    zero as the return value of cppc_cpufreq_get_rate().
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit ba6ea77d0e75113b52fdae6e01473476cb48a83c
+Author: Liao Chang <liaochang1@huawei.com>
+Date:   Tue Aug 15 09:40:02 2023 +0800
+
+    cpufreq: Prefer to print cpuid in MIN/MAX QoS register error message
+    
+    When a cpufreq_policy is allocated, the cpus, related_cpus and real_cpus
+    of policy are still unset. Therefore, it is preferable to print the
+    passed 'cpu' parameter instead of a empty 'cpus' cpumask in error
+    message when registering MIN/MAX QoS notifier fails.
+    
+    Signed-off-by: Liao Chang <liaochang1@huawei.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit d3dec5bb61ce113cc84146bf4a72f752256d3767
+Author: Meng Li <li.meng@amd.com>
+Date:   Thu Aug 3 09:43:54 2023 +0800
+
+    cpufreq: amd-pstate-ut: Modify the function to get the highest_perf value
+    
+    The previous function amd_get_highest_perf() will be deprecated.
+    It can only return 166 or 255 by cpuinfo. For platforms that
+    support preferred core, the value of highest perf can be between
+    166 and 255. Therefore, it will cause amd-pstate-ut to fail when
+    run amd_pstate_ut_check_perf().
+    
+    Signed-off-by: Meng Li <li.meng@amd.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 216710a492dde71fc7674e9962727bccb08dfaeb
+Author: Konrad Dybcio <konrad.dybcio@linaro.org>
+Date:   Thu Aug 10 20:12:03 2023 +0200
+
+    cpufreq: mediatek-hw: Remove unused define
+    
+    DYNAMIC_POWER does not seem to be used anywhere in the tree, remove it.
+    
+    Signed-off-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 0aea7a2f88a551d9dd38a2b405063cf5f97bfc29
+Author: Konrad Dybcio <konrad.dybcio@linaro.org>
+Date:   Wed Aug 9 02:07:59 2023 +0200
+
+    cpufreq: blocklist more Qualcomm platforms in cpufreq-dt-platdev
+    
+    All Qualcomm platforms utilizing the qcom-cpufreq-hw driver have no
+    business in using cpufreq-dt. Prevent that from happening.
+    
+    Signed-off-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 5e720f8c8c9d959283c3908bbf32a91a01a86547
+Author: Thomas Weißschuh <linux@weissschuh.net>
+Date:   Mon Aug 7 08:37:45 2023 +0200
+
+    cpufreq: amd-pstate: fix global sysfs attribute type
+    
+    In commit 3666062b87ec ("cpufreq: amd-pstate: move to use bus_get_dev_root()")
+    the "amd_pstate" attributes where moved from a dedicated kobject to the
+    cpu root kobject.
+    
+    While the dedicated kobject expects to contain kobj_attributes the root
+    kobject needs device_attributes.
+    
+    As the changed arguments are not used by the callbacks it works most of
+    the time.
+    However CFI will detect this issue:
+    
+    [ 4947.849350] CFI failure at dev_attr_show+0x24/0x60 (target: show_status+0x0/0x70; expected type: 0x8651b1de)
+    ...
+    [ 4947.849409] Call Trace:
+    [ 4947.849410]  <TASK>
+    [ 4947.849411]  ? __warn+0xcf/0x1c0
+    [ 4947.849414]  ? dev_attr_show+0x24/0x60
+    [ 4947.849415]  ? report_cfi_failure+0x4e/0x60
+    [ 4947.849417]  ? handle_cfi_failure+0x14c/0x1d0
+    [ 4947.849419]  ? __cfi_show_status+0x10/0x10
+    [ 4947.849420]  ? handle_bug+0x4f/0x90
+    [ 4947.849421]  ? exc_invalid_op+0x1a/0x60
+    [ 4947.849422]  ? asm_exc_invalid_op+0x1a/0x20
+    [ 4947.849424]  ? __cfi_show_status+0x10/0x10
+    [ 4947.849425]  ? dev_attr_show+0x24/0x60
+    [ 4947.849426]  sysfs_kf_seq_show+0xa6/0x110
+    [ 4947.849433]  seq_read_iter+0x16c/0x4b0
+    [ 4947.849436]  vfs_read+0x272/0x2d0
+    [ 4947.849438]  ksys_read+0x72/0xe0
+    [ 4947.849439]  do_syscall_64+0x76/0xb0
+    [ 4947.849440]  ? do_user_addr_fault+0x252/0x650
+    [ 4947.849442]  ? exc_page_fault+0x7a/0x1b0
+    [ 4947.849443]  entry_SYSCALL_64_after_hwframe+0x72/0xdc
+    
+    Fixes: 3666062b87ec ("cpufreq: amd-pstate: move to use bus_get_dev_root()")
+    Reported-by: Jannik Glückert <jannik.glueckert@gmail.com>
+    Closes: https://bugzilla.kernel.org/show_bug.cgi?id=217765
+    Link: https://lore.kernel.org/lkml/c7f1bf9b-b183-bf6e-1cbb-d43f72494083@gmail.com/
+    Cc: All applicable <stable@vger.kernel.org>
+    Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
+    Reviewed-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+    Reviewed-by: Nathan Chancellor <nathan@kernel.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit e520d0b6be950ce3738cf4b9bd3b392be818f1dc
+Author: Gustavo A. R. Silva <gustavoars@kernel.org>
+Date:   Mon Jul 31 21:15:48 2023 -0600
+
+    cpufreq: brcmstb-avs-cpufreq: Fix -Warray-bounds bug
+    
+    Allocate extra space for terminating element at:
+    
+    drivers/cpufreq/brcmstb-avs-cpufreq.c:
+    449         table[i].frequency = CPUFREQ_TABLE_END;
+    
+    and add code comment to make this clear.
+    
+    This fixes the following -Warray-bounds warning seen after building
+    ARM with multi_v7_defconfig (GCC 13):
+    In function 'brcm_avs_get_freq_table',
+        inlined from 'brcm_avs_cpufreq_init' at drivers/cpufreq/brcmstb-avs-cpufreq.c:623:15:
+    drivers/cpufreq/brcmstb-avs-cpufreq.c:449:28: warning: array subscript 5 is outside array bounds of 'void[60]' [-Warray-bounds=]
+      449 |         table[i].frequency = CPUFREQ_TABLE_END;
+    In file included from include/linux/node.h:18,
+                     from include/linux/cpu.h:17,
+                     from include/linux/cpufreq.h:12,
+                     from drivers/cpufreq/brcmstb-avs-cpufreq.c:44:
+    In function 'devm_kmalloc_array',
+        inlined from 'devm_kcalloc' at include/linux/device.h:328:9,
+        inlined from 'brcm_avs_get_freq_table' at drivers/cpufreq/brcmstb-avs-cpufreq.c:437:10,
+        inlined from 'brcm_avs_cpufreq_init' at drivers/cpufreq/brcmstb-avs-cpufreq.c:623:15:
+    include/linux/device.h:323:16: note: at offset 60 into object of size 60 allocated by 'devm_kmalloc'
+      323 |         return devm_kmalloc(dev, bytes, flags);
+          |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    This helps with the ongoing efforts to tighten the FORTIFY_SOURCE
+    routines on memcpy() and help us make progress towards globally
+    enabling -Warray-bounds.
+    
+    Link: https://github.com/KSPP/linux/issues/324
+    Fixes: de322e085995 ("cpufreq: brcmstb-avs-cpufreq: AVS CPUfreq driver for Broadcom STB SoCs")
+    Cc: stable@vger.kernel.org
+    Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
+    Reviewed-by: Florian Fainelli <florian.fainelli@broadcom.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 6b6349d0d685fc3032455b43fce57f374819fb54
+Author: AngeloGioacchino Del Regno <angelogioacchino.delregno@somainline.org>
+Date:   Wed Aug 2 14:37:41 2023 +0200
+
+    cpufreq: blocklist MSM8998 in cpufreq-dt-platdev
+    
+    Add the MSM8998 to the blocklist since the CPU scaling on this platform
+    is handled by a separate driver.
+    
+    Signed-off-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@somainline.org>
+    Tested-by: Jeffrey Hugo <quic_jhugo@quicinc.com>
+    Signed-off-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Reviewed-by: Caleb Connolly <caleb.connolly@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit fd459406b99d4a0c641a02aaaf56b585571566cf
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:22 2023 +0800
+
+    cpufreq: omap: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit a8cf9284a794abdaadc91e409e9f233621ea07f8
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:21 2023 +0800
+
+    cpufreq: qoriq: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 1cd04adf97e9e7da5872d4535d25b6ec04c19d4f
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:20 2023 +0800
+
+    cpufreq: acpi: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Acked-by: Rafael J. Wysocki <rafael@kernel.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit b196622358c2dcdd70e0984eacf7105615a245be
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:19 2023 +0800
+
+    cpufreq: tegra186: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 402732324b17a31f7e5dce9659d1b1f049fd65d3
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:18 2023 +0800
+
+    cpufreq: qcom-nvmem: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit cc35f433543f3db25da37e6a663f07f970a03caf
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:17 2023 +0800
+
+    cpufreq: kirkwood: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit d0988eaaa31d29c6bff1d079b42ea6c2ef9cab5e
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:16 2023 +0800
+
+    cpufreq: pcc-cpufreq: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Acked-by: Rafael J. Wysocki <rafael@kernel.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 46ebd4d865f4383ce3c45dc97d581614f84a6ac2
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:15 2023 +0800
+
+    cpufreq: raspberrypi: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Reviewed-by: Florian Fainelli <florian.fainelli@broadcom.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 463ff6d4d42d5672b0835e10a8144ba1832c497f
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:14 2023 +0800
+
+    cpufreq: davinci: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 8d09c46a494af814e059c77f4a1a3319776594e0
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:13 2023 +0800
+
+    cpufreq: imx-cpufreq-dt: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit f1154d65d12feda9ddba36bad4b91984e6a8db36
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:12 2023 +0800
+
+    cpufreq: brcmstb-avs-cpufreq: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Reviewed-by: Florian Fainelli <florian.fainelli@broadcom.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 552f8df83e685c666d0df59559253fe02679f966
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:11 2023 +0800
+
+    cpufreq: tegra194: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit d5aa35fcf3ee0dc7319d12132ed14e61f38007ed
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:10 2023 +0800
+
+    cpufreq: scpi: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Reviewed-by: Sudeep Holla <sudeep.holla@arm.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit b68ea4c2fb89f690c6d5b34002e3ea40cbecb8a2
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:09 2023 +0800
+
+    cpufreq: mediatek-hw: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 1d61b32e500de0223eb42bf5642718a8801d9bc1
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:08 2023 +0800
+
+    cpufreq: imx6q: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 9ffb053dc51058cef3d49aca9881380282257797
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:07 2023 +0800
+
+    cpufreq: vexpress: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Reviewed-by: Sudeep Holla <sudeep.holla@arm.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 573d54dba2825bf7b5447fbaef4d95a3bf3582f4
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:06 2023 +0800
+
+    cpufreq: qcom-cpufreq-hw: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 18da417686b3db681b1b77a925e4b60d73612e17
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:05 2023 +0800
+
+    cpufreq: dt: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit a7fb1727537253460466b840df0ce0f860f29947
+Author: Yangtao Li <frank.li@vivo.com>
+Date:   Wed Jul 12 17:33:04 2023 +0800
+
+    cpufreq: sun50i: Convert to platform remove callback returning void
+    
+    The .remove() callback for a platform driver returns an int which makes
+    many driver authors wrongly assume it's possible to do error handling by
+    returning an error code. However the value returned is (mostly) ignored
+    and this typically results in resource leaks. To improve here there is a
+    quest to make the remove callback return void. In the first step of this
+    quest all drivers are converted to .remove_new() which already returns
+    void.
+    
+    Trivially convert this driver from always returning zero in the remove
+    callback to the void returning variant.
+    
+    Cc: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Signed-off-by: Yangtao Li <frank.li@vivo.com>
+    Acked-by: Jernej Škrabec <jernej.skrabec@gmail.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit a70eb93a2477371638ef481aaae7bb7b760d3004
+Author: Rob Herring <robh@kernel.org>
+Date:   Fri Jul 14 11:44:13 2023 -0600
+
+    cpufreq: Explicitly include correct DT includes
+    
+    The DT of_device.h and of_platform.h date back to the separate
+    of_platform_bus_type before it as merged into the regular platform bus.
+    As part of that merge prepping Arm DT support 13 years ago, they
+    "temporarily" include each other. They also include platform_device.h
+    and of.h. As a result, there's a pretty much random mix of those include
+    files used throughout the tree. In order to detangle these headers and
+    replace the implicit includes with struct declarations, users need to
+    explicitly include the correct includes.
+    
+    Signed-off-by: Rob Herring <robh@kernel.org>
+    Acked-by: Rafael J. Wysocki <rafael@kernel.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit bfb5ef2219b7b28a6e328860438eb55027807289
+Author: Viresh Kumar <viresh.kumar@linaro.org>
+Date:   Wed Jul 12 09:28:43 2023 +0530
+
+    cpufreq: sparc: Don't mark cpufreq callbacks with __init
+    
+    These callbacks can be called again by the cpufreq core after the driver
+    is initialized and must be kept around. We currently get section
+    mismatch build warnings.
+    
+    Don't mark them with __init.
+    
+    Fixes: dcfce7c2cee4 ("cpufreq: sparc: Don't allocate cpufreq_driver dynamically")
+    Reported-by: Geert Uytterhoeven <geert@linux-m68k.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Reviewed-by: Randy Dunlap <rdunlap@infradead.org>
+    Tested-by: Randy Dunlap <rdunlap@infradead.org> # build-tested
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 0fcfc9e51990246a9813475716746ff5eb98c6aa
+Author: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Date:   Thu Jun 29 12:45:09 2023 -0700
+
+    cpufreq: intel_pstate: Fix scaling for hybrid-capable systems with disabled E-cores
+    
+    Some system BIOS configuration may provide option to disable E-cores.
+    As part of this change, CPUID feature for hybrid (Leaf 7 sub leaf 0,
+    EDX[15] = 0) may not be set. But HWP performance limits will still be
+    using a scaling factor like any other hybrid enabled system.
+    
+    The current check for applying scaling factor will fail when hybrid
+    CPUID feature is not set and the only way to make sure that scaling
+    should be applied by checking CPPC nominal frequency and nominal
+    performance.
+    
+    First, or systems predating Alder Lake, the CPPC nominal frequency and
+    nominal performance are 0, which can be used to distinguish those
+    systems from hybrid systems with disabled E-cores.
+    
+    Second, if the CPPC nominal frequency and nominal performance are
+    defined, which indicates the need to use a special scaling factor, and
+    the nominal performance value multiplied by 100 is not equal to the
+    nominal frequency one, use hybrid scaling factor.
+    
+    This can be done for all HWP systems without additional CPU model check.
+    
+    Signed-off-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    [ rjw: Subject and changelog edits, removal of unneeded parens, comment
+      edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 0b76cc3e9081216918d5e7e907cf9efc7a5fa7db
+Author: Viresh Kumar <viresh.kumar@linaro.org>
+Date:   Fri Jun 30 11:35:41 2023 +0530
+
+    cpufreq: Make CONFIG_CPUFREQ_DT_PLATDEV depend on OF
+    
+    The cpufreq-dt-platform.c driver requires CONFIG_OF to be selected. Mark
+    it as a dependency.
+    
+    Reported-by: kernel test robot <lkp@intel.com>
+    Closes: https://lore.kernel.org/oe-kbuild-all/202306250025.savpMM8L-lkp@intel.com/
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 5ee64250286e8c5162808667a9a8668488d9f577
+Author: Andrew Halaney <ahalaney@redhat.com>
+Date:   Fri Jun 23 10:57:07 2023 -0500
+
+    cpufreq: qcom-cpufreq-hw: Use dev_err_probe() when failing to get icc paths
+    
+    This way, if there's an issue (in this case a -EPROBE_DEFER), you can
+    get useful output:
+    
+        [root@dhcp19-243-150 ~]# cat /sys/kernel/debug/devices_deferred
+        18591000.cpufreq        qcom-cpufreq-hw: Failed to find icc paths
+    
+    Signed-off-by: Andrew Halaney <ahalaney@redhat.com>
+    Reviewed-by: Bjorn Andersson <quic_bjorande@quicinc.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 03f44ffb3d5be2fceda375d92c70ab6de4df7081
+Author: Tero Kristo <tero.kristo@linux.intel.com>
+Date:   Wed Jun 21 09:58:39 2023 +0300
+
+    cpufreq: intel_pstate: Fix energy_performance_preference for passive
+    
+    If the intel_pstate driver is set to passive mode, then writing the
+    same value to the energy_performance_preference sysfs twice will fail.
+    This is caused by the wrong return value used (index of the matched
+    energy_perf_string), instead of the length of the passed in parameter.
+    Fix by forcing the internal return value to zero when the same
+    preference is passed in by user. This same issue is not present when
+    active mode is used for the driver.
+    
+    Fixes: f6ebbcf08f37 ("cpufreq: intel_pstate: Implement passive mode with HWP enabled")
+    Reported-by: Niklas Neronin <niklas.neronin@intel.com>
+    Signed-off-by: Tero Kristo <tero.kristo@linux.intel.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit c88ad30e3f861c7be4e3b4995554e2b0754059b7
+Author: Mario Limonciello <mario.limonciello@amd.com>
+Date:   Tue Jun 20 12:24:33 2023 -0500
+
+    cpufreq: amd-pstate: Add a kernel config option to set default mode
+    
+    Users are having more success with amd-pstate since the introduction
+    of EPP and Guided modes.  To expose the driver to more users by default
+    introduce a kernel configuration option for setting the default mode.
+    
+    Users can use an integer to map out which default mode they want to use
+    in lieu of a kernel command line option.
+    
+    This will default to EPP, but only if:
+     1) The CPU supports an MSR.
+     2) The system profile is identified
+     3) The system profile is identified as a non-server by the FADT.
+    
+    Link: https://gitlab.freedesktop.org/hadess/power-profiles-daemon/-/merge_requests/121
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Gautham R. Shenoy <gautham.shenoy@amd.com>
+    Co-developed-by: Perry Yuan <perry.yuan@amd.com>
+    Signed-off-by: Perry Yuan <perry.yuan@amd.com>
+    Signed-off-by: Mario Limonciello <mario.limonciello@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 32f80b9adfdb43f8af248596724f59dde938a190
+Author: Mario Limonciello <mario.limonciello@amd.com>
+Date:   Tue Jun 20 12:24:32 2023 -0500
+
+    cpufreq: amd-pstate: Set a fallback policy based on preferred_profile
+    
+    If a user's configuration doesn't explicitly specify the cpufreq
+    scaling governor then the code currently explicitly falls back to
+    'powersave'. This default is fine for notebooks and desktops, but
+    servers and undefined machines should default to 'performance'.
+    
+    Look at the 'preferred_profile' field from the FADT to set this
+    policy accordingly.
+    
+    Link: https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/05_ACPI_Software_Programming_Model/ACPI_Software_Programming_Model.html#fixed-acpi-description-table-fadt
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Suggested-by: Wyes Karny <Wyes.Karny@amd.com>
+    Reviewed-by: Gautham R. Shenoy <gautham.shenoy@amd.com>
+    Signed-off-by: Mario Limonciello <mario.limonciello@amd.com>
+    Reviewed-by: Perry Yuan <Perry.Yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit a4ba10bf6855bf9381fe2365ec9c3af84c1fa7db
+Author: Mario Limonciello <mario.limonciello@amd.com>
+Date:   Mon Jun 12 09:26:48 2023 -0400
+
+    cpufreq: amd-pstate: Set default governor to schedutil
+    
+    The Kconfig currently defaults the governor to schedutil on x86_64
+    only when intel-pstate and SMP have been selected.
+    
+    If the kernel is built only with amd-pstate, the default governor
+    should also be schedutil.
+    
+    Signed-off-by: Mario Limonciello <mario.limonciello@amd.com>
+    Reviewed-by: Leo Li <sunpeng.li@amd.com>
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Tested-by: Perry Yuan <Perry.Yuan@amd.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit f85534113f5ae90a52521cdb9e9977a43ee42626
+Author: Daniel Golle <daniel@makrotopia.org>
+Date:   Mon Jun 5 15:18:12 2023 +0100
+
+    cpufreq: mediatek: correct voltages for MT7622 and MT7623
+    
+    The MT6380 regulator typically used together with MT7622 does not
+    support the current maximum processor and SRAM voltage in the cpufreq
+    driver (1360000uV).
+    For MT7622 limit processor and SRAM supply voltages to 1350000uV to
+    avoid having the tracking algorithm request unsupported voltages from
+    the regulator.
+    
+    On MT7623 there is no separate SRAM supply and the maximum voltage used
+    is 1300000uV. Create dedicated platform data for MT7623 to cover that
+    case as well.
+    
+    Fixes: 0883426fd07e3 ("cpufreq: mediatek: Raise proc and sram max voltage for MT7622/7623")
+    Suggested-by: Jia-wei Chang <Jia-wei.Chang@mediatek.com>
+    Signed-off-by: Daniel Golle <daniel@makrotopia.org>
+    Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 8eec6e740b564ec5e1da59ab7070b89aa23c9973
+Author: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
+Date:   Fri Jun 16 12:41:30 2023 +0100
+
+    cpufreq: armada-8k: add ap807 support
+    
+    Add support for the Armada AP807 die to armada-8k. This uses a
+    different compatible for the CPU clock which needs to be added to
+    the cpufreq driver.
+    
+    This commit takes a different approach to the WindRiver patch
+    "cpufreq: armada: enable ap807-cpu-clk" in that rather than calling
+    of_find_compatible_node() for each compatible, we use a table of
+    IDs instead.
+    
+    Signed-off-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit f4aad639302a07454dcb23b408dcadf8a9efb031
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Mon Jun 12 11:36:10 2023 +0000
+
+    cpufreq: amd-pstate: Make amd-pstate EPP driver name hyphenated
+    
+    amd-pstate passive mode driver is hyphenated. So make amd-pstate active
+    mode driver consistent with that rename "amd_pstate_epp" to
+    "amd-pstate-epp".
+    
+    Fixes: ffa5096a7c33 ("cpufreq: amd-pstate: implement Pstate EPP support for the AMD processors")
+    Cc: All applicable <stable@vger.kernel.org>
+    Reviewed-by: Gautham R. Shenoy <gautham.shenoy@amd.com>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Perry Yuan <Perry.Yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 217e67784eab30cd0704fab4109647ea68a4d850
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Tue May 30 13:13:48 2023 +0000
+
+    cpufreq: amd-pstate: Write CPPC enable bit per-socket
+    
+    Currently amd_pstate sets CPPC enable bit in MSR_AMD_CPPC_ENABLE only
+    for the CPU where the module_init happened. But MSR_AMD_CPPC_ENABLE is
+    per-socket. This causes CPPC enable bit to set for only one socket for
+    servers with more than one physical packages. To fix this write
+    MSR_AMD_CPPC_ENABLE per-socket.
+    
+    Also, handle duplicate calls for cppc_enable, because it's called from
+    per-policy/per-core callbacks and can result in duplicate MSR writes.
+    
+    Before the fix:
+    amd@amd:~$ sudo rdmsr -a 0xc00102b1 | uniq --count
+            192 0
+        192 1
+    
+    After the fix:
+    amd@amd:~$ sudo rdmsr -a 0xc00102b1 | uniq --count
+        384 1
+    
+    Suggested-by: Gautham R. Shenoy <gautham.shenoy@amd.com>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit b4a11fa3331e163e177e76098fe1d8b12b87cf6b
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Mon May 29 14:25:51 2023 +0000
+
+    cpufreq: Fail driver register if it has adjust_perf without fast_switch
+    
+    If fast_switch_possible flag is set by the scaling driver, the governor
+    is free to select fast_switch function even if adjust_perf is set.  Some
+    scaling drivers which use adjust_perf don't set fast_switch thinking
+    that the governor would never fall back to fast_switch. But the governor
+    can fall back to fast_switch even in runtime if frequency invariance is
+    disabled due to some reason. This could crash the kernel if the driver
+    didn't set the fast_switch function pointer.
+    
+    Therefore, fail driver registration if it has adjust_perf without
+    fast_switch.
+    
+    Suggested-by: Rafael J. Wysocki <rafael@kernel.org>
+    Suggested-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 3b062a086984d35a3c6d3a1c7841d0aa73aa76af
+Author: Zhipeng Wang <zhipeng.wang_1@nxp.com>
+Date:   Wed May 24 15:34:16 2023 +0000
+
+    cpufreq: dt-platdev: Support building as module
+    
+    Make the cpufreq platdev driver as tristate so that it can be built
+    as loadable module.
+    
+    Also add MODULE_LICENSE to support building as module.
+    
+    Signed-off-by: Zhipeng Wang <zhipeng.wang_1@nxp.com>
+    [ Viresh: Merged two commits, included module.h ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit b2b2029eb17888117a9dad3b111db004f2e7353b
+Author: Vibhore Vardhan <vibhore@ti.com>
+Date:   Fri May 26 09:43:54 2023 -0500
+
+    cpufreq: dt-platdev: Blacklist ti,am62a7 SoC
+    
+    Add ti,am62a7 SoC to the blacklist as the ti-cpufreq driver will handle
+    creating the cpufreq-dt platform device after it completes so it is not
+    created twice.
+    
+    Based on AM625 CPUFreq patch series by Dave Gerlach.
+    
+    Signed-off-by: Vibhore Vardhan <vibhore@ti.com>
+    Reviewed-by: Dhruva Gole <d-gole@ti.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 5008e4c8c31c65bbe080cbfc1383602d1abf076e
+Author: Vibhore Vardhan <vibhore@ti.com>
+Date:   Fri May 26 09:43:53 2023 -0500
+
+    cpufreq: ti-cpufreq: Add support for AM62A7
+    
+    Add support for TI K3 AM62A7 SoC to read speed and revision values from
+    hardware and pass to OPP layer. AM62A7 has the same A53 and efuse
+    configuration as AM625. Thus, soc_data from AM625 is reused.
+    
+    Based on AM625 CPUFreq patch series by Dave Gerlach.
+    
+    Signed-off-by: Vibhore Vardhan <vibhore@ti.com>
+    Reviewed-by: Dhruva Gole <d-gole@ti.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 7d0f03d104e576da2a7689d0eb8560c67efc03ff
+Author: Robert Marko <robimarko@gmail.com>
+Date:   Fri May 26 22:48:02 2023 +0200
+
+    cpufreq: qcom-nvmem: use helper to get SMEM SoC ID
+    
+    Now that SMEM exports a helper to get the SMEM SoC ID lets utilize it.
+    Currently qcom_cpufreq_get_msm_id() is encoding the returned SMEM SoC ID
+    into an enum, however there is no reason to do so and we can just match
+    directly on the SMEM SoC ID as returned by qcom_smem_get_soc_id().
+    
+    Signed-off-by: Robert Marko <robimarko@gmail.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Bjorn Andersson <andersson@kernel.org>
+    Link: https://lore.kernel.org/r/20230526204802.3081168-5-robimarko@gmail.com
+
+commit 865d7e719262e9845a3c847040fbd4d84c8b5bd9
+Author: Robert Marko <robimarko@gmail.com>
+Date:   Fri May 26 22:48:01 2023 +0200
+
+    cpufreq: qcom-nvmem: use SoC ID-s from bindings
+    
+    SMEM SoC ID-s are now stored in DT bindings so lets use those instead of
+    defining them in the driver again.
+    
+    Signed-off-by: Robert Marko <robimarko@gmail.com>
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Reviewed-by: Bjorn Andersson <bjorn.andersson@linaro.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Bjorn Andersson <andersson@kernel.org>
+    Link: https://lore.kernel.org/r/20230526204802.3081168-4-robimarko@gmail.com
+
+commit 3bf8c6307bad5c0cc09cde982e146d847859b651
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Thu May 18 05:58:19 2023 +0000
+
+    cpufreq: amd-pstate: Update policy->cur in amd_pstate_adjust_perf()
+    
+    Driver should update policy->cur after updating the frequency.
+    Currently amd_pstate doesn't update policy->cur when `adjust_perf`
+    is used. Which causes /proc/cpuinfo to show wrong cpu frequency.
+    Fix this by updating policy->cur with correct frequency value in
+    adjust_perf function callback.
+    
+    - Before the fix: (setting min freq to 1.5 MHz)
+    
+    [root@amd]# cat /proc/cpuinfo | grep "cpu MHz" | sort | uniq --count
+          1 cpu MHz         : 1777.016
+          1 cpu MHz         : 1797.160
+          1 cpu MHz         : 1797.270
+        189 cpu MHz         : 400.000
+    
+    - After the fix: (setting min freq to 1.5 MHz)
+    
+    [root@amd]# cat /proc/cpuinfo | grep "cpu MHz" | sort | uniq --count
+          1 cpu MHz         : 1753.353
+          1 cpu MHz         : 1756.838
+          1 cpu MHz         : 1776.466
+          1 cpu MHz         : 1776.873
+          1 cpu MHz         : 1777.308
+          1 cpu MHz         : 1779.900
+        183 cpu MHz         : 1805.231
+          1 cpu MHz         : 1956.815
+          1 cpu MHz         : 2246.203
+          1 cpu MHz         : 2259.984
+    
+    Fixes: 1d215f0319c2 ("cpufreq: amd-pstate: Add fast switch function for AMD P-State")
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    [ rjw: Subject edits ]
+    Cc: 5.17+ <stable@vger.kernel.org> # 5.17+
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 249b62c448de7117c18531d626aed6e153cdfd75
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Wed May 17 16:28:16 2023 +0000
+
+    cpufreq: amd-pstate: Remove fast_switch_possible flag from active driver
+    
+    amd_pstate active mode driver is only compatible with static governors.
+    Therefore it doesn't need fast_switch functionality. Remove
+    fast_switch_possible flag from amd_pstate active mode driver.
+    
+    Fixes: ffa5096a7c33 ("cpufreq: amd-pstate: implement Pstate EPP support for the AMD processors")
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 4badf2eb1e986bdbf34dd2f5d4c979553a86fe54
+Author: Gautham R. Shenoy <gautham.shenoy@amd.com>
+Date:   Wed May 17 16:28:15 2023 +0000
+
+    cpufreq: amd-pstate: Add ->fast_switch() callback
+    
+    Schedutil normally calls the adjust_perf callback for drivers with
+    adjust_perf callback available and fast_switch_possible flag set.
+    However, when frequency invariance is disabled and schedutil tries to
+    invoke fast_switch. So, there is a chance of kernel crash if this
+    function pointer is not set. To protect against this scenario add
+    fast_switch callback to amd_pstate driver.
+    
+    Fixes: 1d215f0319c2 ("cpufreq: amd-pstate: Add fast switch function for AMD P-State")
+    Signed-off-by: Gautham R. Shenoy <gautham.shenoy@amd.com>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 73c7f8246539da12c76bb731a2fe7389ae55eae8
+Author: Petr Pavlu <petr.pavlu@suse.com>
+Date:   Thu May 11 14:53:12 2023 +0200
+
+    cpufreq: ACPI: Prevent a warning when another frequency driver is loaded
+    
+    The recent change to use platform devices to load ACPI PPC and PCC
+    drivers caused that a misleading warning is reported when a respective
+    module cannot be loaded because another CPU frequency driver is already
+    registered:
+    
+    kernel: acpi-cpufreq: probe of acpi-cpufreq failed with error -17
+    
+    Address it by changing the return code in acpi-cpufreq and pcc-cpufreq
+    for this case from -EEXIST to -ENODEV which silences the warning in
+    call_driver_probe().
+    
+    The change has also a benefit for users of init_module() as this return
+    code is propagated out from the syscall. The previous -EEXIST code made
+    the callers, such as kmod, wrongly believe that the module was already
+    loaded instead of that it failed to load.
+    
+    Fixes: 691a63712347 ("ACPI: cpufreq: Use platform devices to load ACPI PPC and PCC drivers")
+    Reported-by: Kevin Locke <kevin@kevinlocke.name>
+    Link: https://lore.kernel.org/lkml/ZFreh8SDMX67EaB6@kevinlocke.name/
+    Signed-off-by: Petr Pavlu <petr.pavlu@suse.com>
+    Tested-by: Kevin Locke <kevin@kevinlocke.name>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 11a3b0ac33d95aa84be426e801f800997262a225
+Author: Christoph Niedermaier <cniedermaier@dh-electronics.com>
+Date:   Fri May 12 17:07:11 2023 +0200
+
+    cpufreq: imx6q: don't warn for disabling a non-existing frequency
+    
+    It is confusing if a warning is given for disabling a non-existent
+    frequency of the operating performance points (OPP). In this case
+    the function dev_pm_opp_disable() returns -ENODEV. Check the return
+    value and avoid the output of a warning in this case. Avoid code
+    duplication by using a separate function.
+    
+    Signed-off-by: Christoph Niedermaier <cniedermaier@dh-electronics.com>
+    [ Viresh : Updated commit subject ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit dcfce7c2cee481853e7717890e1e2d6daba354c4
+Author: Viresh Kumar <viresh.kumar@linaro.org>
+Date:   Wed Apr 12 08:47:56 2023 +0530
+
+    cpufreq: sparc: Don't allocate cpufreq_driver dynamically
+    
+    There is no point allocating the cpufreq driver dynamically and add so
+    much complexity in the driver.
+    
+    Do what is done for other cpufreq drivers and statically allocate the
+    cpufreq driver.
+    
+    Reported-by: Markus Elfring <Markus.Elfring@web.de>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Acked-by: Rafael J. Wysocki <rafael@kernel.org>
+
+commit 9ab24b0486681ecc059ee766e00d9570c6311e08
+Author: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+Date:   Tue Apr 25 15:11:19 2023 +0200
+
+    cpufreq: tegra194: Fix an error handling path in tegra194_cpufreq_probe()
+    
+    If the probe needs to be deferred, some resources still need to be
+    released. So branch to the error handling path instead of returning
+    directly.
+    
+    Fixes: f41e1442ac5b ("cpufreq: tegra194: add OPP support and set bandwidth")
+    Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+    Reviewed-by: Sumit Gupta <sumitg@nvidia.com>
+    Acked-by: Thierry Reding <treding@nvidia.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 4b4c0d37164c296efbdbceacb8d2535a3910b13e
+Author: Mason Huo <mason.huo@starfivetech.com>
+Date:   Fri Apr 21 11:14:30 2023 +0800
+
+    cpufreq: dt-platdev: Add JH7110 SOC to the allowlist
+    
+    Add the compatible strings for supporting the generic
+    cpufreq driver on the StarFive JH7110 SoC.
+    
+    Signed-off-by: Mason Huo <mason.huo@starfivetech.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 44295af5019f1997d038ad2611086a2d1e2af167
+Author: Sanjay Chandrashekara <sanjayc@nvidia.com>
+Date:   Tue Apr 18 17:04:54 2023 +0530
+
+    cpufreq: use correct unit when verify cur freq
+    
+    cpufreq_verify_current_freq checks() if the frequency returned by
+    the hardware has a slight delta with the valid frequency value
+    last set and returns "policy->cur" if the delta is within "1 MHz".
+    In the comparison, "policy->cur" is in "kHz" but it's compared
+    against HZ_PER_MHZ. So, the comparison range becomes "1 GHz".
+    
+    Fix this by comparing against KHZ_PER_MHZ instead of HZ_PER_MHZ.
+    
+    Fixes: f55ae08c8987 ("cpufreq: Avoid unnecessary frequency updates due to mismatch")
+    Signed-off-by: Sanjay Chandrashekara <sanjayc@nvidia.com>
+    [ sumit gupta: Commit message update ]
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit f41e1442ac5bd687389d6104d7b74766db821eb3
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Tue Apr 11 16:29:59 2023 +0530
+
+    cpufreq: tegra194: add OPP support and set bandwidth
+    
+    Add support to use OPP table from DT in Tegra194 cpufreq driver.
+    Tegra SoC's receive the frequency lookup table (LUT) from BPMP-FW.
+    Cross check the OPP's present in DT against the LUT from BPMP-FW
+    and enable only those DT OPP's which are present in LUT also.
+    
+    The OPP table in DT has CPU Frequency to bandwidth mapping where
+    the bandwidth value is per MC channel. DRAM bandwidth depends on the
+    number of MC channels which can vary as per the boot configuration.
+    This per channel bandwidth from OPP table will be later converted by
+    MC driver to final bandwidth value by multiplying with number of
+    channels before sending the request to BPMP-FW.
+    
+    If OPP table is not present in DT, then use the LUT from BPMP-FW
+    directy as the CPU frequency table and not do the DRAM frequency
+    scaling which is same as the current behavior.
+    
+    Now, as the CPU Frequency table is being controlling through OPP
+    table in DT. Keeping fewer entries in the table will create less
+    frequency steps and can help to scale fast to high frequencies
+    when required.
+    
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit a88fb96086ea4f6c426e6d436c75af509888964b
+Author: Rob Herring <robh@kernel.org>
+Date:   Wed Mar 29 10:52:12 2023 -0500
+
+    cpufreq: sun50i: Add explicit include for cpu.h
+    
+    Removing the include of cpu.h from of_device.h causes an error:
+    
+    drivers/cpufreq/sun50i-cpufreq-nvmem.c:42:19: error: implicit declaration of function ‘get_cpu_device’; did you mean ‘get_device’? [-Werror=implicit-function-declaration]
+    
+    As of_device.h is not otherwise needed, it can be replaced with of.h
+    (also implicitly included).
+    
+    Acked-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Link: https://lore.kernel.org/r/20230329-dt-cpu-header-cleanups-v1-15-581e2605fe47@kernel.org
+    Signed-off-by: Rob Herring <robh@kernel.org>
+
+commit 21bb32b155dfe7b40e5e6545f2df53f81f2e69cc
+Author: Rob Herring <robh@kernel.org>
+Date:   Wed Mar 29 10:52:11 2023 -0500
+
+    cpufreq: Adjust includes to remove of_device.h
+    
+    Now that of_cpu_device_node_get() is defined in of.h, of_device.h is just
+    implicitly including other includes, and is no longer needed. Adjust the
+    include files with what was implicitly included by of_device.h (cpu.h and
+    of.h) and drop including of_device.h.
+    
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Acked-by: Rafael J. Wysocki <rafael@kernel.org>
+    Link: https://lore.kernel.org/r/20230329-dt-cpu-header-cleanups-v1-14-581e2605fe47@kernel.org
+    Signed-off-by: Rob Herring <robh@kernel.org>
+
+commit 11fa52fe619acfa945712d94a0bc27c0f5bc49de
+Author: Tom Rix <trix@redhat.com>
+Date:   Mon Apr 3 20:33:37 2023 -0400
+
+    cpufreq: amd-pstate: Make varaiable mode_state_machine static
+    
+    smatch reports
+    drivers/cpufreq/amd-pstate.c:907:25: warning: symbol
+      'mode_state_machine' was not declared. Should it be static?
+    
+    This variable is only used in one file so it should be static.
+    
+    Signed-off-by: Tom Rix <trix@redhat.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Reviewed-by: Dhruva Gole <d-gole@ti.com>
+    [ rjw: Subject edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 4654e9f9f43993eb9ce383fa7c88d14b052b8cc3
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Thu Mar 30 14:13:14 2023 +0000
+
+    amd-pstate: Fix amd_pstate mode switch
+    
+    amd_pstate mode can be changed by writing the mode name to the `status`
+    sysfs. But some combinations are not working. Fix this issue by taking
+    care of the edge cases.
+    
+    Before the fix the mode change combination test fails:
+    
+     #./pst_test.sh
+    Test passed: from: disable, to
+    Test passed: from: disable, to disable
+    Test failed: 1, From mode: disable, to mode: passive
+    Test failed: 1, From mode: disable, to mode: active
+    Test failed: 1, From mode: passive, to mode: active
+    Test passed: from: passive, to disable
+    Test failed: 1, From mode: passive, to mode: passive
+    Test failed: 1, From mode: passive, to mode: active
+    Test failed: 1, From mode: active, to mode: active
+    Test passed: from: active, to disable
+    Test failed: 1, From mode: active, to mode: passive
+    Test failed: 1, From mode: active, to mode: active
+    
+    After the fix test passes:
+    
+     #./pst_test.sh
+    Test passed: from: disable, to
+    Test passed: from: disable, to disable
+    Test passed: from: disable, to passive
+    Test passed: from: disable, to active
+    Test passed: from: passive, to active
+    Test passed: from: passive, to disable
+    Test passed: from: passive, to passive
+    Test passed: from: passive, to active
+    Test passed: from: active, to active
+    Test passed: from: active, to disable
+    Test passed: from: active, to passive
+    Test passed: from: active, to active
+    
+    Fixes: abd61c08ef349 ("cpufreq: amd-pstate: add driver working mode switch support")
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Alexey Kardashevskiy <aik@amd.com>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit a038895e25b296ca1ef0254f92673ea64bc1a2ee
+Author: Viresh Kumar <viresh.kumar@linaro.org>
+Date:   Tue Apr 4 05:09:10 2023 +0530
+
+    cpufreq: drivers with target_index() must set freq_table
+    
+    Since the cpufreq core directly uses freq_table, for cpufreq drivers
+    that set their target_index() callback, make it mandatory for them to
+    set the same.
+    
+    Since this is set per policy and normally from policy->init(), do this
+    from cpufreq_table_validate_and_sort() which gets called right after
+    ->init().
+    
+    Reported-by: Yajun Deng <yajun.deng@linux.dev>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit e2b47e585931a988c856fd4ba31e1296f749aee3
+Author: Bjorn Andersson <quic_bjorande@quicinc.com>
+Date:   Thu Mar 23 15:33:43 2023 -0700
+
+    cpufreq: qcom-cpufreq-hw: Revert adding cpufreq qos
+    
+    The OSM/EPSS hardware controls the frequency of each CPU cluster based
+    on requests from the OS and various throttling events in the system.
+    While throttling is in effect the related dcvs interrupt will be kept
+    high. The purpose of the code handling this interrupt is to
+    continuously report the thermal pressure based on the throttled
+    frequency.
+    
+    The reasoning for adding QoS control to this mechanism is not entirely
+    clear, but the introduction of commit 'c4c0efb06f17 ("cpufreq:
+    qcom-cpufreq-hw: Add cpufreq qos for LMh")' causes the
+    scaling_max_frequncy to be set to the throttled frequency. On the next
+    iteration of polling, the throttled frequency is above or equal to the
+    newly requested frequency, so the polling is stopped.
+    
+    With cpufreq limiting the max frequency, the hardware no longer report a
+    throttling state and no further updates to thermal pressure or qos
+    state are made.
+    
+    The result of this is that scaling_max_frequency can only go down, and
+    the system becomes slower and slower every time a thermal throttling
+    event is reported by the hardware.
+    
+    Even if the logic could be improved, there is no reason for software to
+    limit the max freqency in response to the hardware limiting the max
+    frequency. At best software will follow the reported hardware state, but
+    typically it will cause slower backoff of the throttling.
+    
+    This reverts commit c4c0efb06f17fa4a37ad99e7752b18a5405c76dc.
+    
+    Fixes: c4c0efb06f17 ("cpufreq: qcom-cpufreq-hw: Add cpufreq qos for LMh")
+    Reported-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+    Signed-off-by: Bjorn Andersson <quic_bjorande@quicinc.com>
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 417598f998520b1484a7cef2ac0563de7d975937
+Author: Luca Weiss <luca.weiss@fairphone.com>
+Date:   Fri Mar 24 15:06:24 2023 +0100
+
+    cpufreq: Add SM7225 to cpufreq-dt-platdev blocklist
+    
+    The Qualcomm SM7225 platform uses the qcom-cpufreq-hw driver, so add
+    it to the cpufreq-dt-platdev driver's blocklist.
+    
+    Signed-off-by: Luca Weiss <luca.weiss@fairphone.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit ba5e770c9698782bc203bbf5cf3b36a77720bdbe
+Author: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Date:   Thu Mar 23 18:40:26 2023 +0100
+
+    cpufreq: qcom-cpufreq-hw: fix double IO unmap and resource release on exit
+    
+    Commit 054a3ef683a1 ("cpufreq: qcom-hw: Allocate qcom_cpufreq_data
+    during probe") moved getting memory resource and iomap from
+    qcom_cpufreq_hw_cpu_init() to the probe function, however it left
+    untouched cleanup in qcom_cpufreq_hw_cpu_exit().
+    
+    During device unbind this will lead to doule release of resource and
+    double iounmap(), first by qcom_cpufreq_hw_cpu_exit() and second via
+    managed resources:
+    
+      resource: Trying to free nonexistent resource <0x0000000018593000-0x0000000018593fff>
+      Trying to vunmap() nonexistent vm area (0000000088a7d4dc)
+      ...
+      vunmap (mm/vmalloc.c:2771 (discriminator 1))
+      iounmap (mm/ioremap.c:60)
+      devm_ioremap_release (lib/devres.c:19)
+      devres_release_all (drivers/base/devres.c:506 drivers/base/devres.c:535)
+      device_unbind_cleanup (drivers/base/dd.c:523)
+      device_release_driver_internal (drivers/base/dd.c:1248 drivers/base/dd.c:1263)
+      device_driver_detach (drivers/base/dd.c:1300)
+      unbind_store (drivers/base/bus.c:243)
+      drv_attr_store (drivers/base/bus.c:127)
+      sysfs_kf_write (fs/sysfs/file.c:137)
+      kernfs_fop_write_iter (fs/kernfs/file.c:334)
+      vfs_write (include/linux/fs.h:1851 fs/read_write.c:491 fs/read_write.c:584)
+      ksys_write (fs/read_write.c:637)
+      __arm64_sys_write (fs/read_write.c:646)
+      invoke_syscall (arch/arm64/include/asm/current.h:19 arch/arm64/kernel/syscall.c:57)
+      el0_svc_common.constprop.0 (arch/arm64/include/asm/daifflags.h:28 arch/arm64/kernel/syscall.c:150)
+      do_el0_svc (arch/arm64/kernel/syscall.c:194)
+      el0_svc (arch/arm64/include/asm/daifflags.h:28 arch/arm64/kernel/entry-common.c:133 arch/arm64/kernel/entry-common.c:142 arch/arm64/kernel/entry-common.c:638)
+      el0t_64_sync_handler (arch/arm64/kernel/entry-common.c:656)
+      el0t_64_sync (arch/arm64/kernel/entry.S:591)
+    
+    Fixes: 054a3ef683a1 ("cpufreq: qcom-hw: Allocate qcom_cpufreq_data during probe")
+    Cc: <stable@vger.kernel.org>
+    Cc: Manivannan Sadhasivam <mani@kernel.org>
+    Signed-off-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+    Reviewed-by: Manivannan Sadhasivam <mani@kernel.org>
+    Reviewed-by: Bjorn Andersson <andersson@kernel.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 0883426fd07e39355362e3f2eb9aee1a154dcaf6
+Author: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Date:   Fri Mar 24 18:11:30 2023 +0800
+
+    cpufreq: mediatek: Raise proc and sram max voltage for MT7622/7623
+    
+    During the addition of SRAM voltage tracking for CCI scaling, this
+    driver got some voltage limits set for the vtrack algorithm: these
+    were moved to platform data first, then enforced in a later commit
+    6a17b3876bc8 ("cpufreq: mediatek: Refine mtk_cpufreq_voltage_tracking()")
+    using these as max values for the regulator_set_voltage() calls.
+    
+    In this case, the vsram/vproc constraints for MT7622 and MT7623
+    were supposed to be the same as MT2701 (and a number of other SoCs),
+    but that turned out to be a mistake because the aforementioned two
+    SoCs' maximum voltage for both VPROC and VPROC_SRAM is 1.36V.
+    
+    Fix that by adding new platform data for MT7622/7623 declaring the
+    right {proc,sram}_max_volt parameter.
+    
+    Fixes: ead858bd128d ("cpufreq: mediatek: Move voltage limits to platform data")
+    Fixes: 6a17b3876bc8 ("cpufreq: mediatek: Refine mtk_cpufreq_voltage_tracking()")
+    Signed-off-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+    Signed-off-by: Jia-Wei Chang <jia-wei.chang@mediatek.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit d3296bb4cafd4bad4a5cf2eeab9d19cc94f9e30e
+Author: Jia-Wei Chang <jia-wei.chang@mediatek.com>
+Date:   Fri Mar 24 18:11:29 2023 +0800
+
+    cpufreq: mediatek: raise proc/sram max voltage for MT8516
+    
+    Since the upper boundary of proc/sram voltage of MT8516 is 1300 mV,
+    which is greater than the value of MT2701 1150 mV, we fix it by adding
+    the corresponding platform data and specify proc/sram_max_volt to
+    support MT8516.
+    
+    Signed-off-by: Jia-Wei Chang <jia-wei.chang@mediatek.com>
+    Fixes: ead858bd128d ("cpufreq: mediatek: Move voltage limits to platform data")
+    Fixes: 6a17b3876bc8 ("cpufreq: mediatek: Refine mtk_cpufreq_voltage_tracking()")
+    Reported-by: Nick Hainke <vincent@systemli.org>
+    Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit d51e106240bc755cbe59634b70d567c192b045b2
+Author: Jia-Wei Chang <jia-wei.chang@mediatek.com>
+Date:   Fri Mar 24 18:11:28 2023 +0800
+
+    cpufreq: mediatek: fix KP caused by handler usage after regulator_put/clk_put
+    
+    Any kind of failure in mtk_cpu_dvfs_info_init() will lead to calling
+    regulator_put() or clk_put() and the KP will occur since the regulator/clk
+    handlers are used after released in mtk_cpu_dvfs_info_release().
+    
+    To prevent the usage after regulator_put()/clk_put(), the regulator/clk
+    handlers are addressed in a way of "Free the Last Thing Style".
+    
+    Signed-off-by: Jia-Wei Chang <jia-wei.chang@mediatek.com>
+    Fixes: 4b9ceb757bbb ("cpufreq: mediatek: Enable clocks and regulators")
+    Suggested-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+    Suggested-by: Dan Carpenter <error27@gmail.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit d51c63230994f167126d9d8381011b4cb2b0ad22
+Author: Jia-Wei Chang <jia-wei.chang@mediatek.com>
+Date:   Fri Mar 24 18:11:27 2023 +0800
+
+    cpufreq: mediatek: fix passing zero to 'PTR_ERR'
+    
+    In order to prevent passing zero to 'PTR_ERR' in
+    mtk_cpu_dvfs_info_init(), we fix the return value of of_get_cci() using
+    error pointer by explicitly casting error number.
+    
+    Signed-off-by: Jia-Wei Chang <jia-wei.chang@mediatek.com>
+    Fixes: 0daa47325bae ("cpufreq: mediatek: Link CCI device to CPU")
+    Reported-by: Dan Carpenter <error27@gmail.com>
+    Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 175c9df15aef7a1446fb67154a186b73dd892b50
+Author: Rob Herring <robh@kernel.org>
+Date:   Fri Mar 10 08:47:03 2023 -0600
+
+    cpufreq: pmac32: Use of_property_read_bool() for boolean properties
+    
+    It is preferred to use typed property access functions (i.e.
+    of_property_read_<type> functions) rather than low-level
+    of_get_property/of_find_property functions for reading properties.
+    Convert reading boolean properties to to of_property_read_bool().
+    
+    Signed-off-by: Rob Herring <robh@kernel.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Reviewed-by: Michael Ellerman <mpe@ellerman.id.au>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 8ffdb1fe9121f85232171630a8cfb0574cbf81b2
+Author: Jingyu Wang <jingyuwang_vip@163.com>
+Date:   Wed Mar 8 20:28:30 2023 +0800
+
+    cpufreq: Fix typo in the ARM_BRCMSTB_AVS_CPUFREQ Kconfig entry
+    
+    Delete the redundant word 'to' from the help text in the
+    ARM_BRCMSTB_AVS_CPUFREQ Kconfig entry.
+    
+    Signed-off-by: Jingyu Wang <jingyuwang_vip@163.com>
+    [ rjw: Subject and changelog edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 877d5cd2aeed8fddeb3afe174c6b9eb77cd56f8b
+Author: qinyu <qinyu32@huawei.com>
+Date:   Mon Mar 20 16:17:02 2023 +0800
+
+    cpufreq: warn about invalid vals to scaling_max/min_freq interfaces
+    
+    When echo an invalid val to scaling_min_freq:
+    > echo 123abc123 > scaling_min_freq
+    It looks weird to have a return val of 0:
+    > echo $?
+    > 0
+    
+    Sane people won't echo strings like that into these interfaces but fuzz
+    tests may do. Also, maybe it's better to inform people if input is
+    invalid.
+    
+    After this:
+    > echo 123abc123 > scaling_min_freq
+    > -bash: echo: write error: Invalid argument
+    
+    Signed-off-by: qinyu <qinyu32@huawei.com>
+    Tested-by: zhangxiaofeng <zhangxiaofeng46@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 691a637123470bfe63bccf5836ead40fac4c7fab
+Author: Petr Pavlu <petr.pavlu@suse.com>
+Date:   Thu Mar 16 16:10:36 2023 +0100
+
+    ACPI: cpufreq: Use platform devices to load ACPI PPC and PCC drivers
+    
+    The acpi-cpufreq and pcc-cpufreq drivers are loaded through per-CPU
+    module aliases. This can result in many unnecessary load requests during
+    boot if another frequency module, such as intel_pstate, is already
+    active. For instance, on a typical Intel system, one can observe that
+    udev makes 2x#CPUs attempts to insert acpi_cpufreq and 1x#CPUs attempts
+    for pcc_cpufreq. All these tries then fail if another frequency module
+    is already registered.
+    
+    In the worst case, without the recent fix in commit 0254127ab977e
+    ("module: Don't wait for GOING modules"), these module loads occupied
+    all udev workers and had their initialization attempts ran sequentially.
+    Resolving all these loads then on some larger machines took too long,
+    prevented other hardware from getting its drivers initialized and
+    resulted in a failed boot. Discussion over these duplicate module
+    requests ended up with a conclusion that only one load attempt should be
+    ideally made.
+    
+    Both acpi-cpufreq and pcc-cpufreq drivers use platform firmware controls
+    which are defined by ACPI. It is possible to treat these interfaces as
+    platform devices.
+    
+    The patch extends the ACPI parsing logic to check the ACPI namespace if
+    the PPC or PCC interface is present and creates a virtual platform
+    device for each if it is available. The acpi-cpufreq and pcc-cpufreq
+    drivers are then updated to map to these devices.
+    
+    This allows to try loading acpi-cpufreq and pcc-cpufreq only once during
+    boot and only if a given interface is available in the firmware.
+    
+    Signed-off-by: Petr Pavlu <petr.pavlu@suse.com>
+    [ rjw: whitespace and error message log level adjustments, subject edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 3ca7bc818d8ccf399cb0366d8d9a915c04a446f9
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Tue Mar 7 11:27:39 2023 +0000
+
+    cpufreq: amd-pstate: Add guided mode control support via sysfs
+    
+    amd_pstate driver's `status` sysfs entry helps to control the driver's
+    mode dynamically by user. After the addition of guided mode the
+    combinations of mode transitions have been increased (16 combinations).
+    Therefore optimise the amd_pstate_update_status function by implementing
+    a state transition table.
+    
+    There are 4 states amd_pstate supports, namely: 'disable', 'passive',
+    'active', and 'guided'.  The transition from any state to any other
+    state is possible after this change.
+    
+    Sysfs interface:
+    
+    To disable amd_pstate driver:
+     # echo disable > /sys/devices/system/cpu/amd_pstate/status
+    
+    To enable passive mode:
+     # echo passive > /sys/devices/system/cpu/amd_pstate/status
+    
+    To change mode to active:
+     # echo active > /sys/devices/system/cpu/amd_pstate/status
+    
+    To change mode to guided:
+     # echo guided > /sys/devices/system/cpu/amd_pstate/status
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Tested-by: Oleksandr Natalenko <oleksandr@natalenko.name>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 2dd6d0ebf74049256160a3d03dabbd92fe0b8599
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Tue Mar 7 11:27:38 2023 +0000
+
+    cpufreq: amd-pstate: Add guided autonomous mode
+    
+    From ACPI spec below 3 modes for CPPC can be defined:
+    
+     1. Non autonomous: OS scaling governor specifies operating frequency/
+        performance level through `Desired Performance` register and platform
+        follows that.
+    
+     2. Guided autonomous: OS scaling governor specifies min and max
+        frequencies/ performance levels through `Minimum Performance` and
+        `Maximum Performance` register, and platform can autonomously select an
+        operating frequency in this range.
+    
+     3. Fully autonomous: OS only hints (via EPP) to platform for the required
+        energy performance preference for the workload and platform autonomously
+        scales the frequency.
+    
+    Currently (1) is supported by amd_pstate as passive mode, and (3) is
+    implemented by EPP support. This change is to support (2).
+    
+    In guided autonomous mode the min_perf is based on the input from the
+    scaling governor. For example, in case of schedutil this value depends
+    on the current utilization. And max_perf is set to max capacity.
+    
+    To activate guided auto mode ``amd_pstate=guided`` command line
+    parameter has to be passed in the kernel.
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Tested-by: Oleksandr Natalenko <oleksandr@natalenko.name>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 1f5e62f5fb217f2c1e003236be7d03cf606c26c4
+Author: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Date:   Thu Mar 2 20:14:11 2023 -0800
+
+    cpufreq: intel_pstate: Enable HWP IO boost for all servers
+    
+    The HWP IO boost results in slight improvements for IO performance on
+    both Ice Lake and Sapphire Rapid servers.
+    
+    Currently there is a CPU model check for Skylake desktop and server along
+    with the ACPI PM profile for performance and enterprise servers to enable
+    IO boost.
+    
+    Remove the CPU model check, so that all current server models enable HWP
+    IO boost by default.
+    
+    Signed-off-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 3666062b87ec8be4b85dc475dfb54bb17e10a7f6
+Author: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Date:   Mon Mar 13 19:29:02 2023 +0100
+
+    cpufreq: amd-pstate: move to use bus_get_dev_root()
+    
+    Direct access to the struct bus_type dev_root pointer is going away soon
+    so replace that with a call to bus_get_dev_root() instead, which is what
+    it is there for.
+    
+    In doing so, remove the unneded kobject structure that was only being
+    created to cause a subdirectory for the attributes.  The name of the
+    attribute group is the correct way to do this, saving code and
+    complexity as well as allowing the attributes to properly show up to
+    userspace tools (the raw kobject would not allow that.)
+    
+    Cc: "Rafael J. Wysocki" <rafael@kernel.org>
+    Cc: Viresh Kumar <viresh.kumar@linaro.org>
+    Cc: linux-pm@vger.kernel.org
+    Acked-by: Huang Rui <ray.huang@.amd.com>
+    Link: https://lore.kernel.org/r/20230313182918.1312597-20-gregkh@linuxfoundation.org
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+commit 2744a63c1aec32eeea16330868b795ac41bcb217
+Author: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Date:   Mon Mar 13 19:28:45 2023 +0100
+
+    cpufreq: move to use bus_get_dev_root()
+    
+    Direct access to the struct bus_type dev_root pointer is going away soon
+    so replace that with a call to bus_get_dev_root() instead, which is what
+    it is there for.
+    
+    Cc: Viresh Kumar <viresh.kumar@linaro.org>
+    Cc: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    Cc: Len Brown <lenb@kernel.org>
+    Cc: linux-pm@vger.kernel.org
+    Acked-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+    Link: https://lore.kernel.org/r/20230313182918.1312597-3-gregkh@linuxfoundation.org
+    Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+commit b8f3a396a7ee43e6079176cc0fb8de2b95a23681
+Author: Rob Herring <robh@kernel.org>
+Date:   Fri Mar 10 08:47:02 2023 -0600
+
+    cpufreq: Use of_property_present() for testing DT property presence
+    
+    It is preferred to use typed property access functions (i.e.
+    of_property_read_<type> functions) rather than low-level
+    of_get_property/of_find_property functions for reading properties. As
+    part of this, convert of_get_property/of_find_property calls to the
+    recently added of_property_present() helper when we just want to test
+    for presence of a property and nothing more.
+    
+    Signed-off-by: Rob Herring <robh@kernel.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 35527c677cb6bbaa6489b8560c8b4316fdd60792
+Author: Konrad Dybcio <konrad.dybcio@linaro.org>
+Date:   Thu Feb 16 11:51:40 2023 +0100
+
+    cpufreq: qcom-hw: Simplify counting frequency domains
+    
+    For quite some time, this driver has been performing some quite
+    low-level DT operations. Simplify that using platform_get_resource.
+    
+    Signed-off-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Reviewed-by: Bjorn Andersson <andersson@kernel.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit df97441673f303d06dd33c04d8d5ee54ae6b2a82
+Author: Nick Alcock <nick.alcock@oracle.com>
+Date:   Wed Feb 22 12:14:41 2023 +0000
+
+    kbuild, cpufreq: remove MODULE_LICENSE in non-modules
+    
+    Since commit 8b41fc4454e ("kbuild: create modules.builtin without
+    Makefile.modbuiltin or tristate.conf"), MODULE_LICENSE declarations
+    are used to identify modules. As a consequence, uses of the macro
+    in non-modules will cause modprobe to misidentify their containing
+    object file as a module when it is not (false positives), and modprobe
+    might succeed rather than failing with a suitable error message.
+    
+    So remove it in the files in this commit, none of which can be built as
+    modules.
+    
+    Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+    Suggested-by: Luis Chamberlain <mcgrof@kernel.org>
+    Cc: Luis Chamberlain <mcgrof@kernel.org>
+    Cc: linux-modules@vger.kernel.org
+    Cc: linux-kernel@vger.kernel.org
+    Cc: Hitomi Hasegawa <hasegawa-hitomi@fujitsu.com>
+    Cc: "Rafael J. Wysocki" <rafael@kernel.org>
+    Cc: Viresh Kumar <viresh.kumar@linaro.org>
+    Cc: linux-pm@vger.kernel.org
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit f35512777e31085f1ade7febed6c2038adb1fb07
+Author: Nick Alcock <nick.alcock@oracle.com>
+Date:   Wed Feb 22 12:14:40 2023 +0000
+
+    kbuild, cpufreq: tegra124: remove MODULE_LICENSE in non-modules
+    
+    Since commit 8b41fc4454e ("kbuild: create modules.builtin without
+    Makefile.modbuiltin or tristate.conf"), MODULE_LICENSE declarations
+    are used to identify modules. As a consequence, uses of the macro
+    in non-modules will cause modprobe to misidentify their containing
+    object file as a module when it is not (false positives), and modprobe
+    might succeed rather than failing with a suitable error message.
+    
+    So remove it in the files in this commit, none of which can be built as
+    modules.
+    
+    Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+    Suggested-by: Luis Chamberlain <mcgrof@kernel.org>
+    Cc: Luis Chamberlain <mcgrof@kernel.org>
+    Cc: linux-modules@vger.kernel.org
+    Cc: linux-kernel@vger.kernel.org
+    Cc: Hitomi Hasegawa <hasegawa-hitomi@fujitsu.com>
+    Cc: "Rafael J. Wysocki" <rafael@kernel.org>
+    Cc: Viresh Kumar <viresh.kumar@linaro.org>
+    Cc: Thierry Reding <thierry.reding@gmail.com>
+    Cc: Jonathan Hunter <jonathanh@nvidia.com>
+    Cc: linux-pm@vger.kernel.org
+    Cc: linux-tegra@vger.kernel.org
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 5bd289f69bc145fa10927a6883502a0e7cbcb811
+Author: Nick Alcock <nick.alcock@oracle.com>
+Date:   Fri Feb 24 15:07:49 2023 +0000
+
+    cpufreq: intel_pstate: remove MODULE_LICENSE in non-modules
+    
+    Since commit 8b41fc4454e ("kbuild: create modules.builtin without
+    Makefile.modbuiltin or tristate.conf"), MODULE_LICENSE declarations
+    are used to identify modules. As a consequence, uses of the macro
+    in non-modules will cause modprobe to misidentify their containing
+    object file as a module when it is not (false positives), and modprobe
+    might succeed rather than failing with a suitable error message.
+    
+    So remove it in the files in this commit, none of which can be built as
+    modules.
+    
+    Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+    Suggested-by: Luis Chamberlain <mcgrof@kernel.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit fa0746b11ba04d3df04adddb283cab3cc1d90ec3
+Author: Nick Alcock <nick.alcock@oracle.com>
+Date:   Fri Feb 17 14:10:40 2023 +0000
+
+    cpufreq: amd-pstate: remove MODULE_LICENSE in non-modules
+    
+    Since commit 8b41fc4454e ("kbuild: create modules.builtin without
+    Makefile.modbuiltin or tristate.conf"), MODULE_LICENSE declarations
+    are used to identify modules. As a consequence, uses of the macro
+    in non-modules will cause modprobe to misidentify their containing
+    object file as a module when it is not (false positives), and modprobe
+    might succeed rather than failing with a suitable error message.
+    
+    So remove it in amd-pstate.c which cannot be built as a module.
+    
+    Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+    Suggested-by: Luis Chamberlain <mcgrof@kernel.org>
+    [ rjw: Subject and changelog adjustments ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 7af78020e28a532262d00d94de708a705d636e91
+Author: Kai-Heng Feng <kai.heng.feng@canonical.com>
+Date:   Thu Feb 23 15:02:52 2023 +0800
+
+    cpufreq: amd-pstate: Let user know amd-pstate is disabled
+    
+    Commit 202e683df37c ("cpufreq: amd-pstate: add amd-pstate driver
+    parameter for mode selection") changed the driver to be disabled by
+    default, and this can surprise users.
+    
+    Let users know what happened so they can decide what to do next.
+    
+    Link: https://bugs.launchpad.net/bugs/2006942
+    Signed-off-by: Kai-Heng Feng <kai.heng.feng@canonical.com>
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Yuan Perry <Perry.Yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 60675225ebeecea248035fd3a0efc82ae9038a98
+Author: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Date:   Tue Feb 21 22:45:26 2023 -0800
+
+    cpufreq: intel_pstate: Adjust balance_performance EPP for Sapphire Rapids
+    
+    While the majority of server OS distributions are deployed with the
+    "performance" governor as the default, some distributions like Ubuntu use
+    the "powersave" governor by default.
+    
+    While using the "powersave" governor in its default configuration on
+    Sapphire Rapids systems leads to much lower power, the performance is
+    lower by more than 25% for several workloads relative to the
+    "performance" governor.
+    
+    A 37% difference has been reported by www.Phoronix.com [1].
+    
+    This is a consequence of using a relatively high EPP value in the
+    default configuration of the "powersave" governor and the performance
+    can be made much closer to the "performance" governor's level by
+    adjusting the default EPP value. Based on experiments, with EPP of 0x00,
+    0x10, 0x20, the performance delta between the "powersave" governor and
+    the "performance" one is around 12%. However, the EPP of 0x20 reduces
+    average power by 18% with respect to the lower EPP values.
+    
+    [Note that raising min_perf_pct in sysfs as high as 50% in addition to
+     adjusting EPP does not improve the performance any further.]
+    
+    For this reason, change the EPP value corresponding to the the default
+    balance_performance setting for Sapphire Rapids to 0x20, which is
+    straightforward, because analogous default EPP adjustment has been
+    applied to Alder Lake and there is a way to set the balance_performance
+    EPP value in intel_pstate based on the processor model already.
+    
+    The goal here is to limit the mean performance delta between the
+    "powersave" governor in the default configuration and the "performance"
+    governor for a wide variety of server workloadsto to around 10-12%. For
+    some bursty workloads, this delta can be still large, as the frequency
+    ramp-up will still lag when the "powersave" governor is in use
+    irrespective of the EPP setting, because the performance governor always
+    requests the maximum possible frequency.
+    
+    Link: https://www.phoronix.com/review/centos-clear-spr/6 # [1]
+    Signed-off-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    [ rjw: Subject and changelog edits ]
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 6e9d12125fcac048c78f497044370c1da85b552a
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Tue Feb 14 07:58:11 2023 +0000
+
+    cpufreq: amd-pstate: Fix invalid write to MSR_AMD_CPPC_REQ
+    
+    `amd_pstate_set_epp` function uses `cppc_req_cached` and `epp` variable
+    to update the MSR_AMD_CPPC_REQ register for AMD MSR systems. The recent
+    commit 7cca9a9851a5 ("cpufreq: amd-pstate: avoid uninitialized variable
+    use") changed the sequence of updating cppc_req_cached and writing the
+    MSR_AMD_CPPC_REQ. Therefore while switching from powersave to
+    performance governor and vice-versa in active mode MSR_AMD_CPPC_REQ is
+    set with the previous cached value. To fix this: first update the
+    `cppc_req_cached` variable and then call `amd_pstate_set_epp` function.
+    
+     - Before commit 7cca9a9851a5 ("cpufreq: amd-pstate: avoid uninitialized
+       variable use"):
+    
+    With powersave governor:
+    [    1.652743] amd_pstate_epp_init: writing to cppc_req_cached = 0x1eff
+    [    1.652744] amd_pstate_set_epp: writing cppc_req_cached = 0x1eff
+    [    1.652746] amd_pstate_set_epp: writing min_perf = 30, des_perf = 0, max_perf = 255, epp = 0
+    
+    Changing to performance governor:
+    [  300.493842] amd_pstate_epp_init: writing to cppc_req_cached = 0xffff
+    [  300.493846] amd_pstate_set_epp: writing cppc_req_cached = 0xffff
+    [  300.493847] amd_pstate_set_epp: writing min_perf = 255, des_perf = 0, max_perf = 255, epp = 0
+    
+     - After commit 7cca9a9851a5 ("cpufreq: amd-pstate: avoid uninitialized
+       variable use"):
+    
+    With powersave governor:
+    [    1.646037] amd_pstate_set_epp: writing cppc_req_cached = 0xffff
+    [    1.646038] amd_pstate_set_epp: writing min_perf = 255, des_perf = 0, max_perf = 255, epp = 0
+    [    1.646042] amd_pstate_epp_init: writing to cppc_req_cached = 0x1eff
+    
+    Changing to performance governor:
+    [  687.117401] amd_pstate_set_epp: writing cppc_req_cached = 0x1eff
+    [  687.117405] amd_pstate_set_epp: writing min_perf = 30, des_perf = 0, max_perf = 255, epp = 0
+    [  687.117419] amd_pstate_epp_init: writing to cppc_req_cached = 0xffff
+    
+     - After this fix:
+    
+    With powersave governor:
+    [    2.525717] amd_pstate_epp_init: writing to cppc_req_cached = 0x1eff
+    [    2.525720] amd_pstate_set_epp: writing cppc_req_cached = 0x1eff
+    [    2.525722] amd_pstate_set_epp: writing min_perf = 30, des_perf = 0, max_perf = 255, epp = 0
+    
+    Changing to performance governor:
+    [ 3440.152468] amd_pstate_epp_init: writing to cppc_req_cached = 0xffff
+    [ 3440.152473] amd_pstate_set_epp: writing cppc_req_cached = 0xffff
+    [ 3440.152474] amd_pstate_set_epp: writing min_perf = 255, des_perf = 0, max_perf = 255, epp = 0
+    
+    Fixes: 7cca9a9851a5 ("cpufreq: amd-pstate: avoid uninitialized variable use")
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 6f098cde9df2c86d60db727d6270272751943674
+Author: Manivannan Sadhasivam <mani@kernel.org>
+Date:   Tue Feb 14 15:11:15 2023 +0530
+
+    cpufreq: qcom-hw: Add missing null pointer check
+    
+    of_device_get_match_data() may return NULL, so add a check to prevent
+    potential null pointer dereference.
+    
+    Issue reported by Qualcomm's internal static analysis tool.
+    
+    Fixes: 4f7961706c63 ("cpufreq: qcom-hw: Move soc_data to struct qcom_cpufreq")
+    Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 108fcad91109bd7e9374ae9d509085f5ec55799b
+Author: Thomas Weißschuh <linux@weissschuh.net>
+Date:   Tue Feb 7 19:58:18 2023 +0000
+
+    cpufreq: Make kobj_type structure constant
+    
+    Since commit ee6d3dd4ed48 ("driver core: make kobj_type constant.")
+    the driver core allows the usage of const struct kobj_type.
+    
+    Take advantage of this to constify the structure definition to prevent
+    modification at runtime.
+    
+    Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 5d8f384a9b4fc50f6a18405f1c08e5a87a77b5b3
+Author: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+Date:   Wed Feb 8 10:26:54 2023 +0100
+
+    cpufreq: davinci: Fix clk use after free
+    
+    The remove function first frees the clks and only then calls
+    cpufreq_unregister_driver(). If one of the cpufreq callbacks is called
+    just before cpufreq_unregister_driver() is run, the freed clks might be
+    used.
+    
+    Fixes: 6601b8030de3 ("davinci: add generic CPUFreq driver for DaVinci")
+    Signed-off-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 7cca9a9851a5fb44808949539af6c0428e48a267
+Author: Arnd Bergmann <arnd@arndb.de>
+Date:   Tue Feb 7 17:12:51 2023 +0100
+
+    cpufreq: amd-pstate: avoid uninitialized variable use
+    
+    The new epp support causes warnings about three separate
+    but related bugs:
+    
+    1) failing before allocation should just return an error:
+    
+    drivers/cpufreq/amd-pstate.c:951:6: error: variable 'ret' is used uninitialized whenever 'if' condition is true [-Werror,-Wsometimes-uninitialized]
+            if (!dev)
+                ^~~~
+    drivers/cpufreq/amd-pstate.c:1018:9: note: uninitialized use occurs here
+            return ret;
+                   ^~~
+    
+    2) wrong variable to store return code:
+    
+    drivers/cpufreq/amd-pstate.c:963:6: error: variable 'ret' is used uninitialized whenever 'if' condition is true [-Werror,-Wsometimes-uninitialized]
+            if (rc)
+                ^~
+    drivers/cpufreq/amd-pstate.c:1019:9: note: uninitialized use occurs here
+            return ret;
+                   ^~~
+    drivers/cpufreq/amd-pstate.c:963:2: note: remove the 'if' if its condition is always false
+            if (rc)
+            ^~~~~~~
+    
+    3) calling amd_pstate_set_epp() in cleanup path after determining
+    that it should not be called:
+    
+    drivers/cpufreq/amd-pstate.c:1055:6: error: variable 'epp' is used uninitialized whenever 'if' condition is true [-Werror,-Wsometimes-uninitialized]
+            if (cpudata->epp_policy == cpudata->policy)
+                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    drivers/cpufreq/amd-pstate.c:1080:30: note: uninitialized use occurs here
+            amd_pstate_set_epp(cpudata, epp);
+                                        ^~~
+    
+    All three are trivial to fix, but most likely there are additional bugs
+    in this function when the error handling was not really tested.
+    
+    Fixes: ffa5096a7c33 ("cpufreq: amd-pstate: implement Pstate EPP support for the AMD processors")
+    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Reviewed-by: Yuan Perry <Perry.Yuan@amd.com>
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit dd329e1e21b54c73f58a440b6164d04d8a7fc542
+Author: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+Date:   Tue Feb 7 20:59:09 2023 +0100
+
+    cpufreq: Make cpufreq_unregister_driver() return void
+    
+    All but a few drivers ignore the return value of
+    cpufreq_unregister_driver(). Those few that don't only call it after
+    cpufreq_register_driver() succeeded, in which case the call doesn't
+    fail.
+    
+    Make the function return no value and add a WARN_ON for the case that
+    the function is called in an invalid situation (i.e. without a previous
+    successful call to cpufreq_register_driver()).
+    
+    Signed-off-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+    Acked-by: Florian Fainelli <f.fainelli@gmail.com> # brcmstb-avs-cpufreq.c
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 51be2fffd65d9f9cb427030ab0ee85d791b4437d
+Author: Douglas Anderson <dianders@chromium.org>
+Date:   Thu Feb 2 14:00:23 2023 -0800
+
+    cpufreq: qcom-hw: Fix cpufreq_driver->get() for non-LMH systems
+    
+    On a sc7180-based Chromebook, when I go to
+    /sys/devices/system/cpu/cpu0/cpufreq I can see:
+    
+      cpuinfo_cur_freq:2995200
+      cpuinfo_max_freq:1804800
+      scaling_available_frequencies:300000 576000 ... 1708800 1804800
+      scaling_cur_freq:1804800
+      scaling_max_freq:1804800
+    
+    As you can see the `cpuinfo_cur_freq` is bogus. It turns out that this
+    bogus info started showing up as of commit c72cf0cb1d77 ("cpufreq:
+    qcom-hw: Fix the frequency returned by cpufreq_driver->get()"). That
+    commit seems to assume that everyone is on the LMH bandwagon, but
+    sc7180 isn't.
+    
+    Let's go back to the old code in the case where LMH isn't used.
+    
+    Fixes: c72cf0cb1d77 ("cpufreq: qcom-hw: Fix the frequency returned by cpufreq_driver->get()")
+    Signed-off-by: Douglas Anderson <dianders@chromium.org>
+    Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Reviewed-by: Manivannan Sadhasivam <mani@kernel.org>
+    [ Viresh: Fixed the 'fixes' tag ]
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 09608d62ae5cd9559549637cccb4092d8ecad3a8
+Author: Nícolas F. R. A. Prado <nfraprado@collabora.com>
+Date:   Thu Jan 26 10:48:56 2023 -0500
+
+    cpufreq: mediatek-hw: Register to module device table
+    
+    Register the compatibles for this module on the module device table so
+    it can be automatically loaded when a matching device is found on the
+    system.
+    
+    Signed-off-by: Nícolas F. R. A. Prado <nfraprado@collabora.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 7214015c7f975542d227db6eaec2db2ecc88f2c1
+Author: Yi-Wei Wang <yiweiw@nvidia.com>
+Date:   Tue Jan 24 11:53:23 2023 +0000
+
+    cpufreq: tegra194: Enable CPUFREQ thermal cooling
+    
+    Populate the flag CPUFREQ_IS_COOLING_DEV for the Tegra194 CPUFREQ driver
+    to register it as a cooling device. This enables CPU frequency
+    throttling for CPUs when the passive trip points are crossed.
+    
+    Signed-off-by: Yi-Wei Wang <yiweiw@nvidia.com>
+    Signed-off-by: Jon Hunter <jonathanh@nvidia.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 3ec32b6d17c5b229c6f5d05849932af1f0c6f523
+Author: Perry Yuan <perry.yuan@amd.com>
+Date:   Tue Jan 31 17:00:15 2023 +0800
+
+    cpufreq: amd-pstate: convert sprintf with sysfs_emit()
+    
+    replace the sprintf with a more generic sysfs_emit function
+    
+    No intended potential function impact
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Perry Yuan <perry.yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit abd61c08ef349af08df0bf587d33f5bde5996a89
+Author: Perry Yuan <Perry.Yuan@amd.com>
+Date:   Tue Jan 31 17:00:12 2023 +0800
+
+    cpufreq: amd-pstate: add driver working mode switch support
+    
+    While amd-pstate driver was loaded with specific driver mode, it will
+    need to check which mode is enabled for the pstate driver,add this sysfs
+    entry to show the current status
+    
+    $ cat /sys/devices/system/cpu/amd-pstate/status
+    active
+    
+    Meanwhile, user can switch the pstate driver mode with writing mode
+    string to sysfs entry as below.
+    
+    Enable passive mode:
+    $ sudo bash -c "echo passive >  /sys/devices/system/cpu/amd-pstate/status"
+    
+    Enable active mode (EPP driver mode):
+    $ sudo bash -c "echo active > /sys/devices/system/cpu/amd-pstate/status"
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Perry Yuan <Perry.Yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 50ddd2f7826927e6dc111a43b3a183f53c260fa4
+Author: Perry Yuan <Perry.Yuan@amd.com>
+Date:   Tue Jan 31 17:00:11 2023 +0800
+
+    cpufreq: amd-pstate: implement suspend and resume callbacks
+    
+    add suspend and resume support for the AMD processors by amd_pstate_epp
+    driver instance.
+    
+    When the CPPC is suspended, EPP driver will set EPP profile to 'power'
+    profile and set max/min perf to lowest perf value.
+    When resume happens, it will restore the MSR registers with
+    previous cached value.
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <Mario.Limonciello@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Perry Yuan <Perry.Yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit d4da12f8033a123353eccf993cb95ee5bff21e7c
+Author: Perry Yuan <Perry.Yuan@amd.com>
+Date:   Tue Jan 31 17:00:10 2023 +0800
+
+    cpufreq: amd-pstate: implement amd pstate cpu online and offline callback
+    
+    Adds online and offline driver callback support to allow cpu cores go
+    offline and help to restore the previous working states when core goes
+    back online later for EPP driver mode.
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <Mario.Limonciello@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Perry Yuan <Perry.Yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit ffa5096a7c338641f70fb06d4778e8cf400181a8
+Author: Perry Yuan <Perry.Yuan@amd.com>
+Date:   Tue Jan 31 17:00:09 2023 +0800
+
+    cpufreq: amd-pstate: implement Pstate EPP support for the AMD processors
+    
+    Add EPP driver support for AMD SoCs which support a dedicated MSR for
+    CPPC.  EPP is used by the DPM controller to configure the frequency that
+    a core operates at during short periods of activity.
+    
+    The SoC EPP targets are configured on a scale from 0 to 255 where 0
+    represents maximum performance and 255 represents maximum efficiency.
+    
+    The amd-pstate driver exports profile string names to userspace that are
+    tied to specific EPP values.
+    
+    The balance_performance string (0x80) provides the best balance for
+    efficiency versus power on most systems, but users can choose other
+    strings to meet their needs as well.
+    
+    $ cat /sys/devices/system/cpu/cpufreq/policy0/energy_performance_available_preferences
+    default performance balance_performance balance_power power
+    
+    $ cat /sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference
+    balance_performance
+    
+    To enable the driver,it needs to add `amd_pstate=active` to kernel
+    command line and kernel will load the active mode epp driver
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <Mario.Limonciello@amd.com>
+    Reviewed-by: Wyes Karny <wyes.karny@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Perry Yuan <Perry.Yuan@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 36c5014e5460963ad7766487c0e22a7ff28681fc
+Author: Wyes Karny <wyes.karny@amd.com>
+Date:   Tue Jan 31 17:00:08 2023 +0800
+
+    cpufreq: amd-pstate: optimize driver working mode selection in amd_pstate_param()
+    
+    The amd-pstate driver may support multiple working modes.
+    Introduce a variable to keep track of which mode is currently enabled.
+    Here we use cppc_state var to indicate which mode is enabled.
+    This change will help to simplify the the amd_pstate_param() to choose
+    which mode used for the following driver registration.
+    
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Perry Yuan <perry.yuan@amd.com>
+    Signed-off-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 38a29e5834eba1e71bc4aab82b09ac065af62b80
+Author: Paul E. McKenney <paulmck@kernel.org>
+Date:   Thu Jan 12 16:11:15 2023 -0800
+
+    drivers/cpufreq: Remove "select SRCU"
+    
+    Now that the SRCU Kconfig option is unconditionally selected, there is
+    no longer any point in selecting it.  Therefore, remove the "select SRCU"
+    Kconfig statements.
+    
+    Signed-off-by: Paul E. McKenney <paulmck@kernel.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Reviewed-by: John Ogness <john.ogness@linutronix.de>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 9a55ab6f02c98bfca1c9c9d73507c1744406d2ba
+Author: Keguang Zhang <keguang.zhang@gmail.com>
+Date:   Thu Jan 12 21:53:42 2023 +0800
+
+    cpufreq: loongson1: Delete obsolete driver
+    
+    The generic DT based cpufreq driver works for Loongson-1,
+    so delete the old custom driver.
+    
+    Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 014e79d7eccea9fe77da891fa04cde75db0af9c9
+Author: Arnd Bergmann <arnd@arndb.de>
+Date:   Fri Sep 30 13:41:15 2022 +0200
+
+    cpufreq: remove s3c24xx drivers
+    
+    All s3c24xx platforms were removed, so these five drivers are all
+    obsolete now.
+    
+    Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+commit 349619f064f9f75cfb6b698e7268cf5971ffe145
+Author: Arnd Bergmann <arnd@arndb.de>
+Date:   Fri Sep 30 13:44:37 2022 +0200
+
+    cpufreq: remove sa1100 driver
+    
+    The sa11xx platform has two cpufreq drivers, one for the older
+    StrongARM1100 SoC, and a second one for StrongARM1110. After
+    the removal of most SA1100 based machines, this driver is unused,
+    and only the sa1110-cpufreq driver remains.
+    
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+commit 9a9e1be12c6d49e15429311714c4b1cc4ddcfe55
+Author: Arnd Bergmann <arnd@arndb.de>
+Date:   Thu Sep 29 15:26:06 2022 +0200
+
+    ARM: sa1100: remove unused board files
+    
+    The Cerf, H3100, Badge4, Hackkit, LART, NanoEngine, PLEB, Shannon and
+    Simpad machines were all marked as unused as there are no known users
+    left. Remove all of these, along with references to them in defconfig
+    files and drivers.
+    
+    Four machines remain now: Assabet, Collie (Zaurus SL5500), iPAQ H3600
+    and Jornada 720, each of which had one person still using them, with
+    Collie also being supported in Qemu.
+    
+    Cc: Peter Chubb <peter.chubb@unsw.edu.au>
+    Cc: Stefan Eletzhofer <stefan.eletzhofer@eletztrick.de>
+    Acked-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Acked-by: Lee Jones <lee@kernel.org>
+    Acked-by: Linus Walleij <linus.walleij@linaro.org>
+    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+commit 4f3085f87b51a551a0647f218d4f324796ecb703
+Author: Perry Yuan <perry.yuan@amd.com>
+Date:   Tue Jan 10 23:10:29 2023 +0800
+
+    cpufreq: amd-pstate: fix kernel hang issue while amd-pstate unregistering
+    
+    In the amd_pstate_adjust_perf(), there is one cpufreq_cpu_get() call to
+    increase increments the kobject reference count of policy and make it as
+    busy. Therefore, a corresponding call to cpufreq_cpu_put() is needed to
+    decrement the kobject reference count back, it will resolve the kernel
+    hang issue when unregistering the amd-pstate driver and register the
+    `amd_pstate_epp` driver instance.
+    
+    Fixes: 1d215f0319 ("cpufreq: amd-pstate: Add fast switch function for AMD P-State")
+    Acked-by: Huang Rui <ray.huang@amd.com>
+    Reviewed-by: Mario Limonciello <mario.limonciello@amd.com>
+    Tested-by: Wyes Karny <wyes.karny@amd.com>
+    Signed-off-by: Perry Yuan <perry.yuan@amd.com>
+    Cc: 5.17+ <stable@vger.kernel.org> # 5.17+
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 08f0adb193c008de640fde34a2e00a666c01d77c
+Author: Miles Chen <miles.chen@mediatek.com>
+Date:   Tue Jan 10 11:12:52 2023 +0800
+
+    cpufreq: armada-37xx: stop using 0 as NULL pointer
+    
+    Use NULL for NULL pointer to fix the following sparse warning:
+    drivers/cpufreq/armada-37xx-cpufreq.c:448:32: sparse: warning: Using plain integer as NULL pointer
+    
+    Signed-off-by: Miles Chen <miles.chen@mediatek.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit faf28e240dd118d9521c68aeb9388b9b8f02d9d0
+Author: Konrad Dybcio <konrad.dybcio@linaro.org>
+Date:   Tue Jan 3 18:11:29 2023 +0100
+
+    cpufreq: Add SM6375 to cpufreq-dt-platdev blocklist
+    
+    The Qualcomm SM6375 platform uses the qcom-cpufreq-hw driver, so add
+    it to the cpufreq-dt-platdev driver's blocklist.
+    
+    Signed-off-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit e8a0e30b742f76ebd0f3b196973df4bf65d8fbbb
+Author: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Date:   Wed Dec 28 22:26:04 2022 +0100
+
+    cpufreq: intel_pstate: Drop ACPI _PSS states table patching
+    
+    After making acpi_processor_get_platform_limit() use the "no limit"
+    value for its frequency QoS request when _PPC returns 0, it is not
+    necessary to replace the frequency corresponding to the first _PSS
+    return package entry with the maximum turbo frequency of the given
+    CPU in intel_pstate_init_acpi_perf_limits() any more, so drop the
+    code doing that along with the comment explaining it.
+    
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 01c5bb0cc2a39fbc56ff9a5ef28b79447f0c2351
+Author: Sumit Gupta <sumitg@nvidia.com>
+Date:   Tue Dec 20 21:32:37 2022 +0530
+
+    cpufreq: Add Tegra234 to cpufreq-dt-platdev blocklist
+    
+    Tegra234 platform uses the tegra194-cpufreq driver, so add it
+    to the blocklist in cpufreq-dt-platdev driver to avoid the cpufreq
+    driver registration from there.
+    
+    Signed-off-by: Sumit Gupta <sumitg@nvidia.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 1a6a8b0080b09bf14a7d45abfe8020bd63306c17
+Author: Konrad Dybcio <konrad.dybcio@linaro.org>
+Date:   Tue Dec 20 14:39:10 2022 +0100
+
+    cpufreq: qcom-hw: Fix reading "reg" with address/size-cells != 2
+    
+    Commit 054a3ef683a1 ("cpufreq: qcom-hw: Allocate qcom_cpufreq_data during
+    probe") assumed that every reg variable is 4*u32 wide (as most new qcom
+    SoCs set #address- and #size-cells to <2>. That is not the case for all of
+    them though. Check the cells values dynamically to ensure the proper
+    region of the DTB is being read.
+    
+    Fixes: 054a3ef683a1 ("cpufreq: qcom-hw: Allocate qcom_cpufreq_data during probe")
+    Signed-off-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit f5f94b9c8b805d87ff185caf9779c3a4d07819e3
+Author: Pierre Gondois <pierre.gondois@arm.com>
+Date:   Tue Dec 20 11:12:25 2022 +0100
+
+    cpufreq: CPPC: Add u64 casts to avoid overflowing
+    
+    The fields of the _CPC object are unsigned 32-bits values.
+    To avoid overflows while using _CPC's values, add 'u64' casts.
+    
+    Signed-off-by: Pierre Gondois <pierre.gondois@arm.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 7ed40bcf8a618436d43b17d565ca35af61bc8e54
+Author: ye xingchen <ye.xingchen@zte.com.cn>
+Date:   Tue Dec 6 16:15:22 2022 +0800
+
+    cpufreq: stats: Convert to use sysfs_emit_at() API
+    
+    Follow the advice of the Documentation/filesystems/sysfs.rst and show()
+    should only use sysfs_emit() or sysfs_emit_at() when formatting the
+    value to be returned to user space.
+    
+    Signed-off-by: ye xingchen <ye.xingchen@zte.com.cn>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 442046328f27e30ce2c830759af89f42e7169bc1
+Author: Stuart Hayes <stuart.w.hayes@gmail.com>
+Date:   Mon Dec 5 11:57:44 2022 -0600
+
+    cpufreq: ACPI: Only set boost MSRs on supported CPUs
+    
+    Stop trying to set boost MSRs on CPUs that don't support boost.
+    
+    This corrects a bug in the recent patch "Defer setting boost MSRs".
+    
+    Fixes: 13fdbc8b8da6 ("cpufreq: ACPI: Defer setting boost MSRs")
+    Signed-off-by: Stuart Hayes <stuart.w.hayes@gmail.com>
+    Reported-by: Borislav Petkov (AMD) <bp@alien8.de>
+    Tested-by: Borislav Petkov (AMD) <bp@alien8.de>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 32eb6453328c372a11559a21a53e5280ad44a421
+Author: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+Date:   Sun Nov 20 18:19:02 2022 +0100
+
+    cpufreq: tegra186: Use flexible array to simplify memory allocation
+    
+    Use flexible array to simplify memory allocation.
+    It saves some memory, avoids an indirection when reading the 'clusters'
+    array and removes some LoC.
+    
+    Detailed explanation:
+    ====================
+    Knowing that:
+      - each devm_ allocation over-allocates 40 bytes for internal needs
+      - Some rounding is done by the memory allocator on 8, 16, 32, 64, 96,
+        128, 192, 256, 512, 1024, 2048, 4096, 8192 boundaries
+    
+    and that:
+      - sizeof(struct tegra186_cpufreq_data) = 24
+      - sizeof(struct tegra186_cpufreq_cluster) = 16
+    
+    Memory allocations in tegra186_cpufreq_probe() are:
+      data:           (24 + 40) = 64                      => 64 bytes
+      data->clusters: (2 * 16 + 40) = 72     => 96 bytes
+    So a total of 160 bytes are allocated.
+    56 for the real need, 80 for internal uses and 24 are wasted.
+    
+    If 'struct tegra186_cpufreq_data' is reordered so that 'clusters' is a
+    flexible array:
+      - it saves one pointer in the structure
+      - only one allocation is needed
+    
+    So, only 96 bytes are allocated:
+      16 + 2 * 16 + 40 = 88  => 96 bytes
+    
+    Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit df51f287b5de3b9d4fd39593eafd1f8298d711c7
+Author: Giovanni Gherdovich <ggherdovich@suse.cz>
+Date:   Mon Nov 21 16:35:40 2022 +0100
+
+    cpufreq: intel_pstate: Add Sapphire Rapids support in no-HWP mode
+    
+    Users may disable HWP in firmware, in which case intel_pstate wouldn't load
+    unless the CPU model is explicitly supported.
+    
+    See also the following past commits:
+    
+    commit d8de7a44e11f ("cpufreq: intel_pstate: Add Skylake servers support")
+    commit 706c5328851d ("cpufreq: intel_pstate: Add Cometlake support in
+    no-HWP mode")
+    commit fbdc21e9b038 ("cpufreq: intel_pstate: Add Icelake servers support in
+    no-HWP mode")
+    commit 71bb5c82aaae ("cpufreq: intel_pstate: Add Tigerlake support in
+    no-HWP mode")
+    
+    Signed-off-by: Giovanni Gherdovich <ggherdovich@suse.cz>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 91fda1f88c0968f1491ab150bb01690525af150a
+Author: Xiongfeng Wang <wangxiongfeng2@huawei.com>
+Date:   Wed Nov 16 19:33:39 2022 +0800
+
+    cpufreq: amd_freq_sensitivity: Add missing pci_dev_put()
+    
+    pci_get_device() will increase the reference count for the returned
+    pci_dev. We need to use pci_dev_put() to decrease the reference count
+    after using pci_get_device(). Let's add it.
+    
+    Fixes: 59a3b3a8db16 ("cpufreq: AMD: Ignore the check for ProcFeedback in ST/CZ")
+    Signed-off-by: Xiongfeng Wang <wangxiongfeng2@huawei.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 5c51054896bcce1d33d39fead2af73fec24f40b6
+Author: Yongqiang Liu <liuyongqiang13@huawei.com>
+Date:   Thu Nov 10 14:23:07 2022 +0000
+
+    cpufreq: Init completion before kobject_init_and_add()
+    
+    In cpufreq_policy_alloc(), it will call uninitialed completion in
+    cpufreq_sysfs_release() when kobject_init_and_add() fails. And
+    that will cause a crash such as the following page fault in complete:
+    
+    BUG: unable to handle page fault for address: fffffffffffffff8
+    [..]
+    RIP: 0010:complete+0x98/0x1f0
+    [..]
+    Call Trace:
+     kobject_put+0x1be/0x4c0
+     cpufreq_online.cold+0xee/0x1fd
+     cpufreq_add_dev+0x183/0x1e0
+     subsys_interface_register+0x3f5/0x4e0
+     cpufreq_register_driver+0x3b7/0x670
+     acpi_cpufreq_init+0x56c/0x1000 [acpi_cpufreq]
+     do_one_initcall+0x13d/0x780
+     do_init_module+0x1c3/0x630
+     load_module+0x6e67/0x73b0
+     __do_sys_finit_module+0x181/0x240
+     do_syscall_64+0x35/0x80
+     entry_SYSCALL_64_after_hwframe+0x63/0xcd
+    
+    Fixes: 4ebe36c94aed ("cpufreq: Fix kobject memleak")
+    Signed-off-by: Yongqiang Liu <liuyongqiang13@huawei.com>
+    Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
+    Cc: 5.2+ <stable@vger.kernel.org> # 5.2+
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 6286bbb40576ffadfde206c332b61345c19af57f
+Author: Hector Martin <marcan@marcan.st>
+Date:   Mon Nov 28 23:29:11 2022 +0900
+
+    cpufreq: apple-soc: Add new driver to control Apple SoC CPU P-states
+    
+    This driver implements CPU frequency scaling for Apple Silicon SoCs,
+    including M1 (t8103), M1 Max/Pro/Ultra (t600x), and M2 (t8112).
+    
+    Each CPU cluster has its own register set, and frequency management is
+    fully automated by the hardware; the driver only has to write one
+    register. There is boost frequency support, but the hardware will only
+    allow their use if only a subset of cores in a cluster are in
+    non-deep-idle. Since we don't support deep idle yet, these frequencies
+    are not achievable, but the driver supports them. They will remain
+    disabled in the device tree until deep idle is implemented, to avoid
+    confusing users.
+    
+    This driver does not yet implement the memory controller performance
+    state tuning that usually accompanies higher CPU p-states. This will be
+    done in a future patch.
+    
+    Acked-by: Marc Zyngier <maz@kernel.org>
+    Signed-off-by: Hector Martin <marcan@marcan.st>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 4370232c727bf45940345dd1b88dbd8c2e42ec56
+Author: Manivannan Sadhasivam <mani@kernel.org>
+Date:   Thu Nov 17 11:01:44 2022 +0530
+
+    cpufreq: qcom-hw: Add CPU clock provider support
+    
+    Qcom CPUFreq hardware (EPSS/OSM) controls clock and voltage to the CPU
+    cores. But this relationship is not represented with the clk framework
+    so far.
+    
+    So, let's make the qcom-cpufreq-hw driver a clock provider. This makes the
+    clock producer/consumer relationship cleaner and is also useful for CPU
+    related frameworks like OPP to know the frequency at which the CPUs are
+    running.
+    
+    The clock frequency provided by the driver is for each frequency domain.
+    We cannot get the frequency of each CPU core because, not all platforms
+    support per-core DCVS feature.
+    
+    Also the frequency supplied by the driver is the actual frequency that
+    comes out of the EPSS/OSM block after the DCVS operation. This frequency is
+    not same as what the CPUFreq framework has set but it is the one that gets
+    supplied to the CPUs after throttling by LMh.
+    
+    Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+    [ Xiu: Fixed memleak. ]
+    Signed-off-by: Xiu Jianfeng <xiujianfeng@huawei.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit c72cf0cb1d77f6b1b58c334dcc3d09fa13111c4c
+Author: Manivannan Sadhasivam <mani@kernel.org>
+Date:   Thu Nov 17 11:01:45 2022 +0530
+
+    cpufreq: qcom-hw: Fix the frequency returned by cpufreq_driver->get()
+    
+    The cpufreq_driver->get() callback is supposed to return the current
+    frequency of the CPU and not the one requested by the CPUFreq core.
+    Fix it by returning the frequency that gets supplied to the CPU after
+    the DCVS operation of EPSS/OSM.
+    
+    Fixes: 2849dd8bc72b ("cpufreq: qcom-hw: Add support for QCOM cpufreq HW driver")
+    Reported-by: Sudeep Holla <sudeep.holla@arm.com>
+    Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit cab75e1c8e42ebb4bb386247a928af6ab412e82b
+Author: Nathan Chancellor <nathan@kernel.org>
+Date:   Tue Nov 8 10:01:03 2022 -0700
+
+    cpufreq: ACPI: Remove unused variables 'acpi_cpufreq_online' and 'ret'
+    
+    Clang warns:
+    
+      drivers/cpufreq/acpi-cpufreq.c:970:24: error: variable 'ret' is uninitialized when used here [-Werror,-Wuninitialized]
+              acpi_cpufreq_online = ret;
+                                    ^~~
+      drivers/cpufreq/acpi-cpufreq.c:960:9: note: initialize the variable 'ret' to silence this warning
+              int ret;
+                    ^
+                      = 0
+      1 error generated.
+    
+    Both ret and acpi_cpufreq_online are now unused so they can be safely
+    removed, clearing up the warning.
+    
+    Fixes: 13fdbc8b8da6 ("cpufreq: ACPI: Defer setting boost MSRs")
+    Link: https://github.com/ClangBuiltLinux/linux/issues/1757
+    Signed-off-by: Nathan Chancellor <nathan@kernel.org>
+    Reviewed-by: Nick Desaulniers <ndesaulniers@google.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 2dfb010d2aafceeab23ccd502c77784006adedd7
+Author: Meng Li <li.meng@amd.com>
+Date:   Mon Nov 14 13:40:37 2022 +0800
+
+    cpufreq: amd-pstate: fix spdxcheck warnings for amd-pstate-ut.c
+    
+    spdxcheck warnings: (new ones prefixed by >>)
+    >> drivers/cpufreq/amd-pstate-ut.c: 1:28 Invalid License ID:
+    GPL-1.0-or-later
+       drivers/spi/spi-gxp.c: 1:35 Invalid token: =or-later
+    
+    Signed-off-by: Meng Li <li.meng@amd.com>
+    Reported-by: kernel test robot <lkp@intel.com>
+    Signed-off-by: Shuah Khan <skhan@linuxfoundation.org>
+
+commit 9901c21bcaf2f01fe5078f750d624f4ddfa8f81b
+Author: Chen Hui <judy.chenhui@huawei.com>
+Date:   Tue Nov 8 15:23:02 2022 +0800
+
+    cpufreq: qcom-hw: Fix memory leak in qcom_cpufreq_hw_read_lut()
+    
+    If "cpu_dev" fails to get opp table in qcom_cpufreq_hw_read_lut(),
+    the program will return, resulting in "table" resource is not released.
+    
+    Fixes: 51c843cf77bb ("cpufreq: qcom: Update the bandwidth levels on frequency change")
+    Signed-off-by: Chen Hui <judy.chenhui@huawei.com>
+    Reviewed-by: Sibi Sankar <quic_sibis@quicinc.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit ddb72884c8bf88c25edb2a722fabbb7d642922d7
+Author: Dave Gerlach <d-gerlach@ti.com>
+Date:   Tue Nov 1 13:09:34 2022 -0500
+
+    cpufreq: ti: Enable ti-cpufreq for ARCH_K3
+    
+    Make ti-cpufreq driver depend on ARCH_K3 and set it to `default y` so it
+    is always enabled for platforms that it depends on.
+    
+    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
+    Signed-off-by: Vibhore Vardhan <vibhore@ti.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit e66e20d71d79e66b2bd03b51964a5a7eddc5e55c
+Author: Dave Gerlach <d-gerlach@ti.com>
+Date:   Tue Nov 1 13:09:32 2022 -0500
+
+    cpufreq: dt-platdev: Blacklist ti,am625 SoC
+    
+    Add ti,am625 SoC to the blacklist as the ti-cpufreq driver will handle
+    creating the cpufreq-dt platform device after it completes so it is not
+    created twice.
+    
+    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
+    Signed-off-by: Vibhore Vardhan <vibhore@ti.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit aac0293a8f1cdf3ae4b2e97a66abc4f754d1c1d2
+Author: Dave Gerlach <d-gerlach@ti.com>
+Date:   Tue Nov 1 13:09:31 2022 -0500
+
+    cpufreq: ti-cpufreq: Add support for AM625
+    
+    Add support for TI K3 AM625 SoC to read speed and revision values from
+    hardware and pass to OPP layer.
+    
+    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
+    Signed-off-by: Vibhore Vardhan <vibhore@ti.com>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 21cdb6c18f85fe538ca8740bc79f11fbe08d0197
+Author: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Date:   Thu Oct 27 10:19:47 2022 -0700
+
+    cpufreq: intel_pstate: Allow EPP 0x80 setting by the firmware
+    
+    With the
+    "commit 3d13058ed2a6 ("cpufreq: intel_pstate: Use firmware default EPP")"
+    the firmware can set an EPP, which driver will not overwrite. But the
+    driver has a valid range check for:
+    0x40 > firmware epp < 0x80.
+    Hence firmware can't specify EPP of 0x80.
+    
+    If the firmware didn't specify in the valid range, the driver has a
+    hard coded EPP of 102. But some Chrome hardware vendors don't want
+    this overwrite and wants to boot with chipset default EPP of 0x80 as
+    this improves battery life.
+    
+    In this case they want to have capability to specify EPP of 0x80 via
+    the firmware. This require the valid range to include 0x80 also.
+    But here the valid range can't be simply extended to include 0x80 as
+    this is the chipset default EPP. Even without any firmware specifying
+    EPP, the chipset will always boot with EPP of 0x80.
+    
+    To make sure that firmware specified EPP of 0x80 and not by the
+    chipset default, it will require additional check to make sure HWP
+    was enabled by the firmware before boot. Only way the firmware can
+    update EPP, is to enable HWP and update EPP via MSR_HWP_REQUEST.
+    
+    This driver already checks, if the HWP is enabled by the firmware.
+    Use the same flag and extend valid range to include 0x80.
+    
+    Signed-off-by: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 13fdbc8b8da6a2325cad3359c9a70504b0ff2f93
+Author: Stuart Hayes <stuart.w.hayes@gmail.com>
+Date:   Wed Nov 2 14:59:57 2022 -0500
+
+    cpufreq: ACPI: Defer setting boost MSRs
+    
+    When acpi-cpufreq is loaded, boost is enabled on every CPU (by setting an
+    MSR) before the driver is registered with cpufreq.  This can be very time
+    consuming, because it is done with a CPU hotplug startup callback, and
+    cpuhp_setup_state() schedules the callback (cpufreq_boost_online()) to run
+    on each CPU one at a time, waiting for each to run before calling the next.
+    
+    If cpufreq_register_driver() fails--if, for example, there are no ACPI
+    P-states present--this is wasted time.
+    
+    Since cpufreq already sets up a CPU hotplug startup callback if and when
+    acpi-cpufreq is registered, set the boost MSRs in acpi_cpufreq_cpu_init(),
+    which is called by the cpufreq cpuhp callback.  This allows acpi-cpufreq to
+    exit quickly if it is loaded but not needed.
+    
+    On one system with 192 CPUs, this patch speeds up boot by about 30 seconds.
+    
+    Signed-off-by: Stuart Hayes <stuart.w.hayes@gmail.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 2842e06f19b94145238c76f0beb7b3b93943467c
+Author: Colin Ian King <colin.i.king@gmail.com>
+Date:   Thu Nov 3 14:36:54 2022 +0000
+
+    cpufreq: SPEAr: Make read-only array sys_clk_src static
+    
+    Don't populate the read-only array sys_clk_src on the stack but instead
+    make it static and add in a missing const. Also makes the object code a
+    little smaller.
+    
+    Signed-off-by: Colin Ian King <colin.i.king@gmail.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 59fdc42793252852e1ca95d1355e9ed0fc2a0612
+Author: Colin Ian King <colin.i.king@gmail.com>
+Date:   Thu Nov 3 15:04:31 2022 +0000
+
+    cpufreq: longhaul: Make array speeds static const
+    
+    Don't populate the read-only array speeds on the stack but instead
+    make it static. Also makes the object code a little smaller. Replace
+    hard-coded loop array bounds with ARRAY_SIZE.
+    
+    Signed-off-by: Colin Ian King <colin.i.king@gmail.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit abdea5fca78101ffe8dc01958013b6e2719b7cb5
+Author: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Date:   Sat Oct 8 22:52:44 2022 +0300
+
+    cpufreq: ACPI: Use str_enabled_disabled() helper
+    
+    Use str_enabled_disabled() helper instead of open coding the same.
+    
+    Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+    Signed-off-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+
+commit 4f7961706c63be4e55b720edb7748233761cfbf9
+Author: Manivannan Sadhasivam <mani@kernel.org>
+Date:   Wed Nov 2 14:30:38 2022 +0530
+
+    cpufreq: qcom-hw: Move soc_data to struct qcom_cpufreq
+    
+    soc_data is a static info of the driver and thus no need to cache it inside
+    the qcom_cpufreq_data struct which is allocated per frequency domain. So,
+    move it inside qcom_cpufreq struct.
+    
+    Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 7cfa8553fe8c10c7e28eb651a6e58a7ba2d5e429
+Author: Manivannan Sadhasivam <mani@kernel.org>
+Date:   Wed Nov 2 14:30:37 2022 +0530
+
+    cpufreq: qcom-hw: Use cached dev pointer in probe()
+    
+    There are multiple instances of dev pointer used in the probe() function.
+    Instead of referencing pdev->dev all the time, let's use a cached dev
+    pointer to simplify the code.
+    
+    Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 054a3ef683a176a509cc9b37f762029aae942495
+Author: Manivannan Sadhasivam <mani@kernel.org>
+Date:   Wed Nov 2 14:30:36 2022 +0530
+
+    cpufreq: qcom-hw: Allocate qcom_cpufreq_data during probe
+    
+    qcom_cpufreq_data is allocated based on the number of frequency domains
+    defined in DT which is static and won't change during runtime. There is
+    no real reason to allocate it during the CPU init() callback and deallocate
+    it during exit(). Hence, move the allocation to probe() and use the
+    allocated memory during init().
+    
+    This also allows us to use devm_platform_get_and_ioremap_resource() helper
+    for acquiring the freq-domain resources from DT.
+    
+    Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit 68069b0d458bb06541641a294c15e06c5704ec2b
+Author: Manivannan Sadhasivam <mani@kernel.org>
+Date:   Tue Oct 25 13:02:50 2022 +0530
+
+    cpufreq: qcom-hw: Remove un-necessary cpumask_empty() check
+    
+    CPUFreq core will always set the "policy->cpus" bitmask with the bitfield
+    of the CPU that goes first per domain/policy. So there is no way the
+    "policy->cpus" bitmask will be empty during qcom_cpufreq_hw_cpu_init().
+    
+    Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+
+commit d182dc6de93225cd853de4db68a1a77501bedb6e
+Author: Hector Martin <marcan@marcan.st>
+Date:   Mon Oct 24 13:39:23 2022 +0900
+
+    cpufreq: Generalize of_perf_domain_get_sharing_cpumask phandle format
+    
+    of_perf_domain_get_sharing_cpumask currently assumes a 1-argument
+    phandle format, and directly returns the argument. Generalize this to
+    return the full of_phandle_args, so it can be used by drivers which use
+    other phandle styles (e.g. separate nodes). This also requires changing
+    the CPU sharing match to compare the full args structure.
+    
+    Also, make sure to of_node_put(args.np) (the original code was leaking a
+    reference).
+    
+    Signed-off-by: Hector Martin <marcan@marcan.st>
+    Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
