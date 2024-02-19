@@ -6,6 +6,64 @@ ffa5096a7c338641f70fb06d4778e8cf400181a8 this has many merge conflicts!
 
 
 
+drivers/base/bus.c:75:8: error: call to undeclared function 'container_of_const'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+                sp = container_of_const(kset, struct subsys_private, subsys);
+                     ^
+drivers/base/bus.c:75:8: note: did you mean 'container_dev_init'?
+drivers/base/base.h:134:13: note: 'container_dev_init' declared here
+extern void container_dev_init(void);
+            ^
+drivers/base/bus.c:75:33: error: expected expression
+                sp = container_of_const(kset, struct subsys_private, subsys);
+                                              ^
+drivers/base/bus.c:75:56: error: use of undeclared identifier 'subsys'
+                sp = container_of_const(kset, struct subsys_private, subsys);
+                                                                     ^
+drivers/base/bus.c:153:39: error: call to undeclared function 'container_of_const'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        struct subsys_private *subsys_priv = to_subsys_private(kobj);
+                                             ^
+drivers/base/base.h:56:32: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                               ^
+drivers/base/bus.c:153:39: error: expected expression
+drivers/base/base.h:56:56: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                                                       ^
+drivers/base/bus.c:153:39: error: use of undeclared identifier 'subsys'
+drivers/base/base.h:56:79: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                                                                              ^
+drivers/base/bus.c:165:39: error: call to undeclared function 'container_of_const'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        struct subsys_private *subsys_priv = to_subsys_private(kobj);
+                                             ^
+drivers/base/base.h:56:32: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                               ^
+drivers/base/bus.c:165:39: error: expected expression
+drivers/base/base.h:56:56: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                                                       ^
+drivers/base/bus.c:165:39: error: use of undeclared identifier 'subsys'
+drivers/base/base.h:56:79: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                                                                              ^
+drivers/base/bus.c:201:32: error: call to undeclared function 'container_of_const'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+        struct subsys_private *priv = to_subsys_private(kobj);
+                                      ^
+drivers/base/base.h:56:32: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                               ^
+drivers/base/bus.c:201:32: error: expected expression
+drivers/base/base.h:56:56: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                                                       ^
+drivers/base/bus.c:201:32: error: use of undeclared identifier 'subsys'
+drivers/base/base.h:56:79: note: expanded from macro 'to_subsys_private'
+#define to_subsys_private(obj) container_of_const(obj, struct subsys_private, subsys.kobj)
+                                               
+
+
+
 
 
 
