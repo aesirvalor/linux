@@ -171,3 +171,5 @@ sphinx_*/
 
 # I am sick of these!
 /tools/bpf/**.h
+
+commit_hashes.txt
