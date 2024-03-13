@@ -59,8 +59,8 @@ struct tlbflush_unmap_batch {
 	 */
 	struct arch_tlbflush_unmap_batch arch;
 
-	/* True if a flush is needed. */
-	bool flush_required;
+	/* The number of flush requested. */
+	int nr_flush_required;
 
 	/*
 	 * If true then the PTE was dirty when unmapped. The entry must be

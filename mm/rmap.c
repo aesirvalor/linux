@@ -605,6 +605,22 @@ out:
 }
 
 #ifdef CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
+
+void fold_ubc_nowr(void)
+{
+	struct tlbflush_unmap_batch *tlb_ubc = &current->tlb_ubc;
+	struct tlbflush_unmap_batch *tlb_ubc_nowr = &current->tlb_ubc_nowr;
+
+	if (!tlb_ubc_nowr->nr_flush_required)
+		return;
+
+	arch_tlbbatch_fold(&tlb_ubc->arch, &tlb_ubc_nowr->arch);
+	tlb_ubc->writable = tlb_ubc->writable || tlb_ubc_nowr->writable;
+	tlb_ubc->nr_flush_required += tlb_ubc_nowr->nr_flush_required;
+	tlb_ubc_nowr->nr_flush_required = 0;
+	tlb_ubc_nowr->writable = false;
+}
+
 /*
  * Flush TLB entries for recently unmapped pages from remote CPUs. It is
  * important if a PTE was dirty when it was unmapped that it's flushed
@@ -615,11 +631,12 @@ void try_to_unmap_flush(void)
 {
 	struct tlbflush_unmap_batch *tlb_ubc = &current->tlb_ubc;
 
-	if (!tlb_ubc->flush_required)
+	fold_ubc_nowr();
+	if (!tlb_ubc->nr_flush_required)
 		return;
 
 	arch_tlbbatch_flush(&tlb_ubc->arch);
-	tlb_ubc->flush_required = false;
+	tlb_ubc->nr_flush_required = 0;
 	tlb_ubc->writable = false;
 }
 
@@ -627,8 +644,9 @@ void try_to_unmap_flush(void)
 void try_to_unmap_flush_dirty(void)
 {
 	struct tlbflush_unmap_batch *tlb_ubc = &current->tlb_ubc;
+	struct tlbflush_unmap_batch *tlb_ubc_nowr = &current->tlb_ubc_nowr;
 
-	if (tlb_ubc->writable)
+	if (tlb_ubc->writable || tlb_ubc_nowr->writable)
 		try_to_unmap_flush();
 }
 
@@ -645,15 +663,16 @@ void try_to_unmap_flush_dirty(void)
 static void set_tlb_ubc_flush_pending(struct mm_struct *mm, pte_t pteval,
 				      unsigned long uaddr)
 {
-	struct tlbflush_unmap_batch *tlb_ubc = &current->tlb_ubc;
+	struct tlbflush_unmap_batch *tlb_ubc = NULL;
 	int batch;
 	bool writable = pte_dirty(pteval);
 
 	if (!pte_accessible(mm, pteval))
 		return;
 
+	tlb_ubc = pte_write(pteval) ? &current->tlb_ubc : &current->tlb_ubc_nowr;
 	arch_tlbbatch_add_pending(&tlb_ubc->arch, mm, uaddr);
-	tlb_ubc->flush_required = true;
+	tlb_ubc->nr_flush_required += 1;
 
 	/*
 	 * Ensure compiler does not re-order the setting of tlb_flush_batched
