@@ -984,6 +984,9 @@ struct zone {
 	/* Zone statistics */
 	atomic_long_t		vm_stat[NR_VM_ZONE_STAT_ITEMS];
 	atomic_long_t		vm_numa_event[NR_VM_NUMA_EVENT_ITEMS];
+#ifdef CONFIG_MIGRC
+	atomic_t		migrc_pending_nr;
+#endif
 } ____cacheline_internodealigned_in_smp;
 
 enum pgdat_flags {
@@ -1401,6 +1404,9 @@ typedef struct pglist_data {
 #endif
 #ifdef CONFIG_MEMORY_FAILURE
 	struct memory_failure_stats mf_stats;
+#endif
+#ifdef CONFIG_MIGRC
+	atomic_t migrc_pending_nr;
 #endif
 } pg_data_t;
 

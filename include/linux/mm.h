@@ -4061,4 +4061,34 @@ static inline void accept_memory(phys_addr_t start, phys_addr_t end)
 
 #endif
 
+#ifdef CONFIG_MIGRC
+void migrc_init_page(struct page *p);
+bool migrc_pending(struct folio *f);
+void migrc_shrink(struct llist_head *h);
+void migrc_req_start(void);
+void migrc_req_end(void);
+bool migrc_req_processing(void);
+bool migrc_try_flush(void);
+void migrc_try_flush_dirty(void);
+struct migrc_req *fold_ubc_nowr_migrc_req(void);
+void free_migrc_req(struct migrc_req *req);
+int migrc_pending_nr_in_zone(struct zone *z);
+
+extern atomic_t migrc_gen;
+extern struct llist_head migrc_reqs;
+extern struct llist_head migrc_reqs_dirty;
+#else
+static inline void migrc_init_page(struct page *p) {}
+static inline bool migrc_pending(struct folio *f) { return false; }
+static inline void migrc_shrink(struct llist_head *h) {}
+static inline void migrc_req_start(void) {}
+static inline void migrc_req_end(void) {}
+static inline bool migrc_req_processing(void) { return false; }
+static inline bool migrc_try_flush(void) { return false; }
+static inline void migrc_try_flush_dirty(void) {}
+static inline struct migrc_req *fold_ubc_nowr_migrc_req(void) { return NULL; }
+static inline void free_migrc_req(struct migrc_req *req) {}
+static inline int migrc_pending_nr_in_zone(struct zone *z) { return 0; }
+#endif
+
 #endif /* _LINUX_MM_H */

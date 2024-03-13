@@ -1219,9 +1219,40 @@ STATIC_NOPV void native_flush_tlb_local(void)
 	native_write_cr3(__native_read_cr3());
 }
 
+#ifdef CONFIG_MIGRC
+DEFINE_PER_CPU(int, migrc_done);
+
+static inline int migrc_tlb_local_begin(void)
+{
+	int ret = atomic_read(&migrc_gen);
+
+	smp_mb__after_atomic();
+	return ret;
+}
+
+static inline void migrc_tlb_local_end(int gen)
+{
+	smp_mb();
+	WRITE_ONCE(*this_cpu_ptr(&migrc_done), gen);
+}
+#else
+static inline int migrc_tlb_local_begin(void)
+{
+	return 0;
+}
+
+static inline void migrc_tlb_local_end(int gen)
+{
+}
+#endif
+
 void flush_tlb_local(void)
 {
+	unsigned int gen;
+
+	gen = migrc_tlb_local_begin();
 	__flush_tlb_local();
+	migrc_tlb_local_end(gen);
 }
 
 /*
@@ -1245,6 +1276,22 @@ void __flush_tlb_all(void)
 	}
 }
 EXPORT_SYMBOL_GPL(__flush_tlb_all);
+
+#ifdef CONFIG_MIGRC
+static inline bool before(int a, int b)
+{
+	return a - b < 0;
+}
+
+void arch_migrc_adj(struct arch_tlbflush_unmap_batch *batch, int gen)
+{
+	int cpu;
+
+	for_each_cpu(cpu, &batch->cpumask)
+		if (!before(READ_ONCE(*per_cpu_ptr(&migrc_done, cpu)), gen))
+			cpumask_clear_cpu(cpu, &batch->cpumask);
+}
+#endif
 
 void arch_tlbbatch_flush(struct arch_tlbflush_unmap_batch *batch)
 {
@@ -1272,6 +1319,11 @@ void arch_tlbbatch_flush(struct arch_tlbflush_unmap_batch *batch)
 
 	put_flush_tlb_info();
 	put_cpu();
+}
+
+void arch_tlbbatch_clean(struct arch_tlbflush_unmap_batch *batch)
+{
+	cpumask_clear(&batch->cpumask);
 }
 
 void arch_tlbbatch_fold(struct arch_tlbflush_unmap_batch *bdst,

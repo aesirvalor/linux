@@ -214,6 +214,10 @@ struct page {
 #ifdef LAST_CPUPID_NOT_IN_PAGE_FLAGS
 	int _last_cpupid;
 #endif
+#ifdef CONFIG_MIGRC
+	struct llist_node migrc_node;
+	unsigned int migrc_state;
+#endif
 } _struct_page_alignment;
 
 /*
@@ -1372,4 +1376,34 @@ enum {
 	/* See also internal only FOLL flags in mm/internal.h */
 };
 
+#ifdef CONFIG_MIGRC
+struct migrc_req {
+	/*
+	 * pages pending for TLB flush
+	 */
+	struct llist_head pages;
+
+	/*
+	 * llist_node of the last page in pages llist
+	 */
+	struct llist_node *last;
+
+	/*
+	 * for hanging onto migrc_reqs llist
+	 */
+	struct llist_node llnode;
+
+	/*
+	 * architecture specific batch information
+	 */
+	struct arch_tlbflush_unmap_batch arch;
+
+	/*
+	 * when the request hung onto migrc_reqs llist
+	 */
+	int gen;
+};
+#else
+struct migrc_req {};
+#endif
 #endif /* _LINUX_MM_TYPES_H */

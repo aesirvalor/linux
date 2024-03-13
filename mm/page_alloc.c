@@ -2840,6 +2840,11 @@ bool __zone_watermark_ok(struct zone *z, unsigned int order, unsigned long mark,
 	long min = mark;
 	int o;
 
+	/*
+	 * There are pages that can be freed by migrc_try_flush().
+	 */
+	free_pages += migrc_pending_nr_in_zone(z);
+
 	/* free_pages may go negative - that's OK */
 	free_pages -= __zone_watermark_unusable_free(z, order, alloc_flags);
 
@@ -3913,6 +3918,7 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	unsigned int zonelist_iter_cookie;
 	int reserve_flags;
 
+	migrc_try_flush();
 restart:
 	compaction_retries = 0;
 	no_progress_loops = 0;
@@ -4427,6 +4433,16 @@ struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
 	page = get_page_from_freelist(alloc_gfp, order, alloc_flags, &ac);
 	if (likely(page))
 		goto out;
+
+	if (order && migrc_try_flush()) {
+		/*
+		 * Try again after freeing migrc's pending pages in case
+		 * of high order allocation.
+		 */
+		page = get_page_from_freelist(alloc_gfp, order, alloc_flags, &ac);
+		if (likely(page))
+			goto out;
+	}
 
 	alloc_gfp = gfp;
 	ac.spread_dirty_pages = false;

@@ -862,6 +862,8 @@ void try_to_unmap_flush(void);
 void try_to_unmap_flush_dirty(void);
 void flush_tlb_batched_pending(struct mm_struct *mm);
 void fold_ubc_nowr(void);
+int nr_flush_required(void);
+int nr_flush_required_nowr(void);
 #else
 static inline void try_to_unmap_flush(void)
 {
@@ -874,6 +876,14 @@ static inline void flush_tlb_batched_pending(struct mm_struct *mm)
 }
 static inline void fold_ubc_nowr(void)
 {
+}
+static inline int nr_flush_required(void)
+{
+	return 0;
+}
+static inline int nr_flush_required_nowr(void)
+{
+	return 0;
 }
 #endif /* CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH */
 

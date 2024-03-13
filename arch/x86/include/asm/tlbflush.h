@@ -292,8 +292,15 @@ static inline void arch_flush_tlb_batched_pending(struct mm_struct *mm)
 }
 
 extern void arch_tlbbatch_flush(struct arch_tlbflush_unmap_batch *batch);
+extern void arch_tlbbatch_clean(struct arch_tlbflush_unmap_batch *batch);
 extern void arch_tlbbatch_fold(struct arch_tlbflush_unmap_batch *bdst,
 			       struct arch_tlbflush_unmap_batch *bsrc);
+
+#ifdef CONFIG_MIGRC
+extern void arch_migrc_adj(struct arch_tlbflush_unmap_batch *batch, int gen);
+#else
+static inline void arch_migrc_adj(struct arch_tlbflush_unmap_batch *batch, int gen) {}
+#endif
 
 static inline bool pte_flags_need_flush(unsigned long oldflags,
 					unsigned long newflags,

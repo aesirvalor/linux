@@ -606,6 +606,86 @@ out:
 
 #ifdef CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
 
+#ifdef CONFIG_MIGRC
+static bool __migrc_try_flush(struct llist_head *h)
+{
+	struct arch_tlbflush_unmap_batch arch;
+	struct llist_node *reqs;
+	struct migrc_req *req;
+	struct migrc_req *req2;
+	LLIST_HEAD(pages);
+
+	reqs = llist_del_all(h);
+	if (!reqs)
+		return false;
+
+	arch_tlbbatch_clean(&arch);
+
+	/*
+	 * TODO: Optimize the time complexity.
+	 */
+	llist_for_each_entry_safe(req, req2, reqs, llnode) {
+		struct llist_node *n;
+
+		arch_migrc_adj(&req->arch, req->gen);
+		arch_tlbbatch_fold(&arch, &req->arch);
+
+		n = llist_del_all(&req->pages);
+		llist_add_batch(n, req->last, &pages);
+		free_migrc_req(req);
+	}
+
+	arch_tlbbatch_flush(&arch);
+	migrc_shrink(&pages);
+	return true;
+}
+
+bool migrc_try_flush(void)
+{
+	bool ret;
+
+	if (migrc_req_processing()) {
+		migrc_req_end();
+		migrc_req_start();
+	}
+	ret = __migrc_try_flush(&migrc_reqs);
+	ret = ret || __migrc_try_flush(&migrc_reqs_dirty);
+
+	return ret;
+}
+
+void migrc_try_flush_dirty(void)
+{
+	if (migrc_req_processing()) {
+		migrc_req_end();
+		migrc_req_start();
+	}
+	__migrc_try_flush(&migrc_reqs_dirty);
+}
+
+struct migrc_req *fold_ubc_nowr_migrc_req(void)
+{
+	struct tlbflush_unmap_batch *tlb_ubc_nowr = &current->tlb_ubc_nowr;
+	struct migrc_req *req;
+	bool dirty;
+
+	if (!tlb_ubc_nowr->nr_flush_required)
+		return NULL;
+
+	dirty = tlb_ubc_nowr->writable;
+	req = dirty ? current->mreq_dirty : current->mreq;
+	if (!req) {
+		fold_ubc_nowr();
+		return NULL;
+	}
+
+	arch_tlbbatch_fold(&req->arch, &tlb_ubc_nowr->arch);
+	tlb_ubc_nowr->nr_flush_required = 0;
+	tlb_ubc_nowr->writable = false;
+	return req;
+}
+#endif
+
 void fold_ubc_nowr(void)
 {
 	struct tlbflush_unmap_batch *tlb_ubc = &current->tlb_ubc;
@@ -619,6 +699,16 @@ void fold_ubc_nowr(void)
 	tlb_ubc->nr_flush_required += tlb_ubc_nowr->nr_flush_required;
 	tlb_ubc_nowr->nr_flush_required = 0;
 	tlb_ubc_nowr->writable = false;
+}
+
+int nr_flush_required(void)
+{
+	return current->tlb_ubc.nr_flush_required;
+}
+
+int nr_flush_required_nowr(void)
+{
+	return current->tlb_ubc_nowr.nr_flush_required;
 }
 
 /*
@@ -648,6 +738,8 @@ void try_to_unmap_flush_dirty(void)
 
 	if (tlb_ubc->writable || tlb_ubc_nowr->writable)
 		try_to_unmap_flush();
+
+	migrc_try_flush_dirty();
 }
 
 /*

@@ -949,6 +949,18 @@ config NUMA_BALANCING_DEFAULT_ENABLED
 	  If set, automatic NUMA balancing will be enabled if running on a NUMA
 	  machine.
 
+config MIGRC
+	bool "Deferring TLB flush by keeping read copies on migration"
+	depends on ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
+	depends on NUMA_BALANCING
+	default n
+	help
+	  TLB flush is necessary when PTE changes by migration. However,
+	  TLB flush can be deferred if both copies of the src page and
+	  the dst page are kept until TLB flush if they are non-writable.
+	  System performance will be improved especially in case that
+	  promotion and demotion type of migration is heavily happening.
+
 menuconfig CGROUPS
 	bool "Control Group support"
 	select KERNFS

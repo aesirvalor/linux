@@ -57,6 +57,244 @@
 
 #include "internal.h"
 
+#ifdef CONFIG_MIGRC
+static int sysctl_migrc_enable = 1;
+#ifdef CONFIG_SYSCTL
+static int sysctl_migrc_enable_handler(struct ctl_table *table, int write,
+		void *buffer, size_t *lenp, loff_t *ppos)
+{
+	struct ctl_table t;
+	int err;
+	int enabled = sysctl_migrc_enable;
+
+	if (write && !capable(CAP_SYS_ADMIN))
+		return -EPERM;
+
+	t = *table;
+	t.data = &enabled;
+	err = proc_dointvec_minmax(&t, write, buffer, lenp, ppos);
+	if (err < 0)
+		return err;
+	if (write)
+		sysctl_migrc_enable = enabled;
+	return err;
+}
+
+static struct ctl_table migrc_sysctls[] = {
+	{
+		.procname	= "migrc_enable",
+		.data		= NULL, /* filled in by handler */
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= sysctl_migrc_enable_handler,
+		.extra1         = SYSCTL_ZERO,
+		.extra2         = SYSCTL_ONE,
+	},
+	{}
+};
+
+static int __init migrc_sysctl_init(void)
+{
+	register_sysctl_init("vm", migrc_sysctls);
+	return 0;
+}
+late_initcall(migrc_sysctl_init);
+#endif
+
+/*
+ * TODO: Yeah, it's a non-sense magic number. This simple value manages
+ * to work conservatively anyway. However, the value needs to be
+ * tuned and adjusted based on the internal condition of memory
+ * management subsystem later.
+ *
+ * Let's start with a simple value for now.
+ */
+static const int migrc_pending_max = 512; /* unit: page */
+
+atomic_t migrc_gen;
+LLIST_HEAD(migrc_reqs);
+LLIST_HEAD(migrc_reqs_dirty);
+
+enum {
+	MIGRC_STATE_NONE,
+	MIGRC_SRC_PENDING,
+	MIGRC_DST_PENDING,
+};
+
+#define MAX_MIGRC_REQ_NR	4096
+static struct migrc_req migrc_req_pool_static[MAX_MIGRC_REQ_NR];
+static atomic_t migrc_req_pool_idx = ATOMIC_INIT(-1);
+static LLIST_HEAD(migrc_req_pool_llist);
+static DEFINE_SPINLOCK(migrc_req_pool_lock);
+
+static struct migrc_req *alloc_migrc_req(void)
+{
+	int idx = atomic_read(&migrc_req_pool_idx);
+	struct llist_node *n;
+
+	if (idx < MAX_MIGRC_REQ_NR - 1) {
+		idx = atomic_inc_return(&migrc_req_pool_idx);
+		if (idx < MAX_MIGRC_REQ_NR)
+			return migrc_req_pool_static + idx;
+	}
+
+	spin_lock(&migrc_req_pool_lock);
+	n = llist_del_first(&migrc_req_pool_llist);
+	spin_unlock(&migrc_req_pool_lock);
+
+	return n ? llist_entry(n, struct migrc_req, llnode) : NULL;
+}
+
+void free_migrc_req(struct migrc_req *req)
+{
+	llist_add(&req->llnode, &migrc_req_pool_llist);
+}
+
+static bool migrc_full(int nid)
+{
+	struct pglist_data *node = NODE_DATA(nid);
+
+	if (migrc_pending_max == -1)
+		return false;
+
+	return atomic_read(&node->migrc_pending_nr) >= migrc_pending_max;
+}
+
+void migrc_init_page(struct page *p)
+{
+	WRITE_ONCE(p->migrc_state, MIGRC_STATE_NONE);
+}
+
+/*
+ * The list should be isolated before.
+ */
+void migrc_shrink(struct llist_head *h)
+{
+	struct page *p;
+	struct llist_node *n;
+
+	n = llist_del_all(h);
+	llist_for_each_entry(p, n, migrc_node) {
+		if (p->migrc_state == MIGRC_SRC_PENDING) {
+			struct pglist_data *node;
+			struct zone *zone;
+
+			node = NODE_DATA(page_to_nid(p));
+			zone = page_zone(p);
+			atomic_dec(&node->migrc_pending_nr);
+			atomic_dec(&zone->migrc_pending_nr);
+		}
+		WRITE_ONCE(p->migrc_state, MIGRC_STATE_NONE);
+		folio_put(page_folio(p));
+	}
+}
+
+bool migrc_pending(struct folio *f)
+{
+	return READ_ONCE(f->page.migrc_state) != MIGRC_STATE_NONE;
+}
+
+static void migrc_expand_req(struct folio *fsrc, struct folio *fdst)
+{
+	struct migrc_req *req;
+	struct pglist_data *node;
+	struct zone *zone;
+
+	req = fold_ubc_nowr_migrc_req();
+	if (!req)
+		return;
+
+	folio_get(fsrc);
+	folio_get(fdst);
+	WRITE_ONCE(fsrc->page.migrc_state, MIGRC_SRC_PENDING);
+	WRITE_ONCE(fdst->page.migrc_state, MIGRC_DST_PENDING);
+
+	if (llist_add(&fsrc->page.migrc_node, &req->pages))
+		req->last = &fsrc->page.migrc_node;
+	llist_add(&fdst->page.migrc_node, &req->pages);
+
+	node = NODE_DATA(folio_nid(fsrc));
+	zone = page_zone(&fsrc->page);
+	atomic_inc(&node->migrc_pending_nr);
+	atomic_inc(&zone->migrc_pending_nr);
+
+	if (migrc_full(folio_nid(fsrc)))
+		migrc_try_flush();
+}
+
+void migrc_req_start(void)
+{
+	struct migrc_req *req;
+	struct migrc_req *req_dirty;
+
+	if (WARN_ON(current->mreq || current->mreq_dirty))
+		return;
+
+	req = alloc_migrc_req();
+	req_dirty = alloc_migrc_req();
+
+	if (!req || !req_dirty)
+		goto fail;
+
+	arch_tlbbatch_clean(&req->arch);
+	init_llist_head(&req->pages);
+	req->last = NULL;
+	current->mreq = req;
+
+	arch_tlbbatch_clean(&req_dirty->arch);
+	init_llist_head(&req_dirty->pages);
+	req_dirty->last = NULL;
+	current->mreq_dirty = req_dirty;
+	return;
+fail:
+	if (req_dirty)
+		free_migrc_req(req_dirty);
+	if (req)
+		free_migrc_req(req);
+}
+
+void migrc_req_end(void)
+{
+	struct migrc_req *req = current->mreq;
+	struct migrc_req *req_dirty = current->mreq_dirty;
+
+	WARN_ON((!req && req_dirty) || (req && !req_dirty));
+
+	if (!req || !req_dirty)
+		return;
+
+	if (llist_empty(&req->pages)) {
+		free_migrc_req(req);
+	} else {
+		req->gen = atomic_inc_return(&migrc_gen);
+		llist_add(&req->llnode, &migrc_reqs);
+	}
+	current->mreq = NULL;
+
+	if (llist_empty(&req_dirty->pages)) {
+		free_migrc_req(req_dirty);
+	} else {
+		req_dirty->gen = atomic_inc_return(&migrc_gen);
+		llist_add(&req_dirty->llnode, &migrc_reqs_dirty);
+	}
+	current->mreq_dirty = NULL;
+}
+
+bool migrc_req_processing(void)
+{
+	return current->mreq && current->mreq_dirty;
+}
+
+int migrc_pending_nr_in_zone(struct zone *z)
+{
+	return atomic_read(&z->migrc_pending_nr);
+}
+#else
+static const int sysctl_migrc_enable;
+static bool migrc_full(int nid) { return true; }
+static void migrc_expand_req(struct folio *fsrc, struct folio *fdst) {}
+#endif
+
 bool isolate_movable_page(struct page *page, isolate_mode_t mode)
 {
 	struct folio *folio = folio_get_nontail_page(page);
@@ -379,6 +617,9 @@ static int folio_expected_refs(struct address_space *mapping,
 		struct folio *folio)
 {
 	int refs = 1;
+
+	refs += migrc_pending(folio) ? 1 : 0;
+
 	if (!mapping)
 		return refs;
 
@@ -1061,6 +1302,12 @@ static void migrate_folio_undo_src(struct folio *src,
 				   bool locked,
 				   struct list_head *ret)
 {
+	/*
+	 * TODO: There might be folios already pending for migrc.
+	 * However, there's no way to cancel those on failure for now.
+	 * Let's reflect the requirement when needed.
+	 */
+
 	if (page_was_mapped)
 		remove_migration_ptes(src, src, false);
 	/* Drop an anon_vma reference if we took one */
@@ -1630,9 +1877,17 @@ static int migrate_pages_batch(struct list_head *from,
 	LIST_HEAD(unmap_folios);
 	LIST_HEAD(dst_folios);
 	bool nosplit = (reason == MR_NUMA_MISPLACED);
+	bool migrc_cond1;
 
 	VM_WARN_ON_ONCE(mode != MIGRATE_ASYNC &&
 			!list_empty(from) && !list_is_singular(from));
+
+	migrc_cond1 = sysctl_migrc_enable &&
+		((reason == MR_DEMOTION && current_is_kswapd()) ||
+		 reason == MR_NUMA_MISPLACED);
+
+	if (migrc_cond1)
+		migrc_req_start();
 
 	for (pass = 0; pass < nr_pass && retry; pass++) {
 		retry = 0;
@@ -1640,6 +1895,10 @@ static int migrate_pages_batch(struct list_head *from,
 		nr_retry_pages = 0;
 
 		list_for_each_entry_safe(folio, folio2, from, lru) {
+			int nr_required;
+			bool migrc_cond2;
+			bool migrc;
+
 			is_thp = folio_test_large(folio) && folio_test_pmd_mappable(folio);
 			nr_pages = folio_nr_pages(folio);
 
@@ -1667,9 +1926,15 @@ static int migrate_pages_batch(struct list_head *from,
 				continue;
 			}
 
+			nr_required = nr_flush_required();
 			rc = migrate_folio_unmap(get_new_folio, put_new_folio,
 					private, folio, &dst, mode, reason,
 					ret_folios);
+			migrc_cond2 = nr_required == nr_flush_required() &&
+				      nr_flush_required_nowr() &&
+				      !migrc_full(folio_nid(folio));
+			migrc = migrc_cond1 && migrc_cond2;
+
 			/*
 			 * The rules are:
 			 *	Success: folio will be freed
@@ -1714,9 +1979,11 @@ static int migrate_pages_batch(struct list_head *from,
 				/* nr_failed isn't updated for not used */
 				stats->nr_thp_failed += thp_retry;
 				rc_saved = rc;
-				if (list_empty(&unmap_folios))
+				if (list_empty(&unmap_folios)) {
+					if (migrc_cond1)
+						migrc_req_end();
 					goto out;
-				else
+				} else
 					goto move;
 			case -EAGAIN:
 				retry++;
@@ -1730,6 +1997,13 @@ static int migrate_pages_batch(struct list_head *from,
 			case MIGRATEPAGE_UNMAP:
 				list_move_tail(&folio->lru, &unmap_folios);
 				list_add_tail(&dst->lru, &dst_folios);
+
+				if (migrc)
+					/*
+					 * XXX: On migration failure,
+					 * extra TLB flush might happen.
+					 */
+					migrc_expand_req(folio, dst);
 				break;
 			default:
 				/*
@@ -1743,12 +2017,22 @@ static int migrate_pages_batch(struct list_head *from,
 				stats->nr_failed_pages += nr_pages;
 				break;
 			}
+			fold_ubc_nowr();
 		}
 	}
 	nr_failed += retry;
 	stats->nr_thp_failed += thp_retry;
 	stats->nr_failed_pages += nr_retry_pages;
 move:
+	/*
+	 * Should be prior to try_to_unmap_flush() so that
+	 * migrc_try_flush() that will be performed later based on the
+	 * gen # assigned in migrc_req_end(), can take benefit of the
+	 * TLB flushes in try_to_unmap_flush().
+	 */
+	if (migrc_cond1)
+		migrc_req_end();
+
 	/* Flush TLBs for all unmapped folios */
 	try_to_unmap_flush();
 
