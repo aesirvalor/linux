@@ -29,6 +29,7 @@ for hash in "${reversed_hashes[@]}"; do
         fi
 
         #LLVM=1 CC="ccache clang" make -j22
+        #make -j22
     fi
     #git cherry-pick --strategy-option=theirs $hash
     #echo "$hash" >> processed_commits.txt
