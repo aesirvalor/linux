@@ -3,7 +3,8 @@
 set -e
 
 # Read commit hashes from the file into an array
-mapfile -t commit_hashes < commit_hashes.txt
+#mapfile -t commit_hashes < commit_hashes.txt
+mapfile -t commit_hashes < commit_v6.1.81-v6.1.92.txt
 
 # Reverse the array
 reversed_hashes=("${commit_hashes[@]}")
